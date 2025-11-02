@@ -1,7 +1,7 @@
 {
-  "name": "MEGAMO - Advanced Air Quality Intelligence",
-  "short_name": "MEGAMO",
-  "description": "Real-time satellite data, ML-powered pollution predictions, and educational insights about air quality",
+  "name": "Megam - Advanced Air Quality Intelligence",
+  "short_name": "Megam",
+  "description": "Real-time satellite and ground station data for global air quality monitoring",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
