@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@vercel/node": "^5.5.3",
     "@vitejs/plugin-react": "^5.0.0",
     "terser": "^5.44.0",
     "typescript": "~5.8.2",

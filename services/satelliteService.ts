@@ -48,8 +48,15 @@ export const getGroundStationData = async (
     
     // Find nearby stations using v3 API
     const stationsUrl = `${OPENAQ_API_URL}/locations?coordinates=${lat},${lng}&radius=${maxRadius}&limit=10`;
-    const stationsResponse = await fetch(stationsUrl, {
-      headers: {
+    
+    // Use proxy in production to avoid CORS issues
+    const isProduction = import.meta.env.PROD;
+    const fetchUrl = isProduction 
+      ? `/api/openaq?url=${encodeURIComponent(stationsUrl)}`
+      : stationsUrl;
+    
+    const stationsResponse = await fetch(fetchUrl, {
+      headers: isProduction ? {} : {
         'X-API-Key': OPENAQ_API_KEY,
       },
     });
@@ -66,8 +73,14 @@ export const getGroundStationData = async (
       stations.map(async (station: any) => {
         try {
           const measurementsUrl = `${OPENAQ_API_URL}/latest?location_id=${station.id}`;
-          const measurementsResponse = await fetch(measurementsUrl, {
-            headers: {
+          
+          // Use proxy in production to avoid CORS issues
+          const fetchMeasurementsUrl = isProduction 
+            ? `/api/openaq?url=${encodeURIComponent(measurementsUrl)}`
+            : measurementsUrl;
+          
+          const measurementsResponse = await fetch(fetchMeasurementsUrl, {
+            headers: isProduction ? {} : {
               'X-API-Key': OPENAQ_API_KEY,
             },
           });
