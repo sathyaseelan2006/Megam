@@ -349,14 +349,13 @@ const findNearestStation = async (lat: number, lng: number, maxRadiusKm: number 
 
 /**
  * Combine multiple data sources to create comprehensive LocationData
- * This function merges satellite data, ground station data
- * No AI needed - pure real-time data!
+ * NEW STRATEGY: NASA satellite as PRIMARY (works everywhere!)
+ * Ground stations as SECONDARY (for enhanced accuracy in cities)
  * 
- * Fallback strategy:
- * 1. Try exact coordinates
- * 2. If no data, search within 50km
- * 3. If still no data, search within 100km
- * 4. If still no data, throw error with suggestions
+ * Priority:
+ * 1. ALWAYS get NASA satellite data (global coverage)
+ * 2. Enhance with ground station data if available
+ * 3. Merge both for comprehensive view
  */
 export const getComprehensiveAQIData = async (
   lat: number,
@@ -366,26 +365,25 @@ export const getComprehensiveAQIData = async (
   try {
     console.log('🌍 Fetching air quality data for:', lat, lng);
     
-    // Fetch all data sources in parallel
-    const [groundStationsResult, waqiResult, nasaResult] = await Promise.allSettled([
+    // ALWAYS fetch NASA first (it works everywhere!)
+    console.log('🛰️ Fetching NASA satellite data (primary source)...');
+    const nasaData = await getNASAMODISData(lat, lng);
+    
+    if (!nasaData) {
+      throw new Error('Unable to fetch satellite data for this location. Please try another location.');
+    }
+    
+    // Try to enhance with ground stations (optional, non-blocking)
+    console.log('📡 Checking for nearby ground stations (enhancement)...');
+    const [groundStationsResult, waqiResult] = await Promise.allSettled([
       getGroundStationData(lat, lng, 25),
       WAQI_API_KEY ? getSatelliteDataFromWAQI(lat, lng) : Promise.reject('No WAQI key'),
-      getNASAMODISData(lat, lng)
     ]);
     
     const groundStations = groundStationsResult.status === 'fulfilled' ? groundStationsResult.value : [];
     const waqiData = waqiResult.status === 'fulfilled' ? waqiResult.value : null;
-    const nasaData = nasaResult.status === 'fulfilled' ? nasaResult.value : null;
 
-    // Process data
-    let locationData: Partial<LocationData> = {
-      lat,
-      lng,
-      dataSource: 'ground',
-      lastUpdated: new Date().toISOString(),
-    };
-
-    // Try to get city name
+    // Get city name
     let city = cityName;
     let country = '';
     if (!cityName) {
@@ -394,73 +392,66 @@ export const getComprehensiveAQIData = async (
       country = geoData.country;
     }
 
-    // Priority 1: Use OpenAQ ground station data
+    // START WITH NASA DATA (Primary - works everywhere!)
+    console.log('✅ Using NASA satellite data as base (global coverage)');
+    let locationData: Partial<LocationData> = {
+      lat,
+      lng,
+      city,
+      country,
+      aqi: nasaData.aqi,
+      pollutants: nasaData.pollutants,
+      summary: generateSummary(nasaData.aqi),
+      healthAdvisory: generateHealthAdvisory(nasaData.aqi),
+      confidence: 70, // Satellite baseline
+      dataSource: 'satellite',
+      lastUpdated: new Date().toISOString(),
+    };
+
+    // ENHANCE with ground station data if available
     if (groundStations.length > 0) {
+      console.log('🎯 Enhancing with ground station measurements...');
       const nearestStation = groundStations[0];
       const pm25 = nearestStation.measurements.find(m => m.parameter === 'pm25');
       const pm10 = nearestStation.measurements.find(m => m.parameter === 'pm10');
-      const o3 = nearestStation.measurements.find(m => m.parameter === 'o3');
-      const no2 = nearestStation.measurements.find(m => m.parameter === 'no2');
       
-      // Calculate AQI from pollutants (simplified - use PM2.5 as primary)
-      let aqi = 50; // default moderate
+      // Calculate ground-based AQI
+      let groundAQI = 50;
       if (pm25) {
-        aqi = Math.round(pm25.value * 4); // Rough PM2.5 to AQI conversion
+        groundAQI = Math.round(pm25.value * 4);
       } else if (pm10) {
-        aqi = Math.round(pm10.value * 2);
+        groundAQI = Math.round(pm10.value * 2);
       }
       
+      // Use ground station data (more accurate!)
       locationData = {
         ...locationData,
-        city,
-        country,
-        aqi: Math.min(500, Math.max(0, aqi)),
+        aqi: Math.min(500, Math.max(0, groundAQI)),
         pollutants: nearestStation.measurements.map(m => ({
           name: m.parameter.toUpperCase(),
           concentration: m.value,
           unit: m.unit
         })),
-        summary: generateSummary(aqi),
-        healthAdvisory: generateHealthAdvisory(aqi),
-        confidence: 90, // Ground station data is highly reliable
-        dataSource: 'ground'
+        summary: generateSummary(groundAQI) + ' (Ground station)',
+        healthAdvisory: generateHealthAdvisory(groundAQI),
+        confidence: 90, // Ground stations are more accurate
+        dataSource: 'hybrid' // Satellite base + ground enhancement
       };
     }
     
-    // Priority 2: Use WAQI if available and no OpenAQ data
-    if (!locationData.aqi && waqiData) {
+    // FURTHER ENHANCE with WAQI if available
+    else if (waqiData) {
+      console.log('🌐 Enhancing with WAQI data...');
       locationData = {
         ...locationData,
         city: city || waqiData.station,
-        country,
         aqi: waqiData.aqi,
         pollutants: waqiData.pollutants,
-        summary: generateSummary(waqiData.aqi),
+        summary: generateSummary(waqiData.aqi) + ' (WAQI station)',
         healthAdvisory: generateHealthAdvisory(waqiData.aqi),
         confidence: 85,
         dataSource: 'hybrid'
       };
-    }
-
-    // Priority 3: Use NASA satellite data if no ground station data
-    if (!locationData.aqi && nasaData) {
-      console.log('✅ Using NASA MODIS satellite data (global coverage)');
-      locationData = {
-        ...locationData,
-        city,
-        country,
-        aqi: nasaData.aqi,
-        pollutants: nasaData.pollutants,
-        summary: generateSummary(nasaData.aqi) + ' (Satellite estimate)',
-        healthAdvisory: generateHealthAdvisory(nasaData.aqi),
-        confidence: nasaData.confidence,
-        dataSource: 'satellite'
-      };
-    }
-
-    // Add ground station metadata
-    if (groundStations.length > 0) {
-      locationData.dataSource = 'hybrid';
     }
 
     // If no real data available at exact location, try nearest station
