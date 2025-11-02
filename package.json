@@ -1,0 +1,51 @@
+{
+  "name": "megam-air-quality-monitor",
+  "version": "1.0.0",
+  "description": "Monitor real-time global air quality data with an interactive 3D globe powered by satellite data",
+  "author": "Megam Team",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "keywords": [
+    "air-quality",
+    "aqi",
+    "pollution",
+    "environment",
+    "globe",
+    "3d",
+    "react",
+    "typescript",
+    "nasa",
+    "satellite",
+    "openaq"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/megam.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/megam/issues"
+  },
+  "homepage": "https://github.com/yourusername/megam#readme",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@google/genai": "^1.24.0",
+    "recharts": "^3.2.1",
+    "date-fns": "^4.1.0",
+    "react-globe.gl": "^2.36.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

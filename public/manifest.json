@@ -1,0 +1,19 @@
+{
+  "name": "MEGAMO - Advanced Air Quality Intelligence",
+  "short_name": "MEGAMO",
+  "description": "Real-time satellite data, ML-powered pollution predictions, and educational insights about air quality",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#06b6d4",
+  "orientation": "any",
+  "categories": ["health", "education", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Test - Megam</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .test-section {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 10px;
+      border-left: 4px solid #4ade80;
+    }
+    .test-section.error {
+      border-left-color: #ef4444;
+    }
+    .test-section h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .status {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status.success {
+      background: #4ade80;
+      color: #000;
+    }
+    .status.error {
+      background: #ef4444;
+      color: #fff;
+    }
+    .status.pending {
+      background: #fbbf24;
+      color: #000;
+    }
+    button {
+      background: #4ade80;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #22c55e;
+    }
+    .info {
+      background: rgba(59, 130, 246, 0.2);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border-left: 4px solid #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Megam API Test Suite</h1>
+    
+    <div class="info">
+      <strong>📋 Instructions:</strong><br>
+      This page will test your API keys without needing to run the full app.<br>
+      Click "Run All Tests" to verify your configuration.
+    </div>
+
+    <button onclick="runAllTests()">🚀 Run All Tests</button>
+    <button onclick="location.reload()">🔄 Reset</button>
+
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    const resultsDiv = document.getElementById('results');
+
+    // Get API keys from Vite env
+    const WAQI_KEY = import.meta.env.VITE_WAQI_API_KEY;
+    const OPENAQ_KEY = import.meta.env.VITE_OPENAQ_API_KEY;
+    const NASA_KEY = import.meta.env.VITE_NASA_API_KEY;
+
+    window.runAllTests = async function() {
+      resultsDiv.innerHTML = '';
+      
+      await testEnvVars();
+      await testWAQI();
+      await testOpenAQ();
+      await testNASA();
+    }
+
+    async function testEnvVars() {
+      const section = createSection('Environment Variables Check');
+      resultsDiv.appendChild(section);
+
+      const result = {
+        WAQI: WAQI_KEY ? '✅ Loaded' : '❌ Missing',
+        OpenAQ: OPENAQ_KEY ? '✅ Loaded' : '⚠️ Missing (optional)',
+        NASA: NASA_KEY ? '✅ Loaded' : '⚠️ Missing (optional)'
+      };
+
+      section.querySelector('pre').textContent = JSON.stringify(result, null, 2);
+      
+      if (!WAQI_KEY) {
+        section.classList.add('error');
+        section.querySelector('.status').className = 'status error';
+        section.querySelector('.status').textContent = 'FAILED';
+      } else {
+        section.querySelector('.status').className = 'status success';
+        section.querySelector('.status').textContent = 'PASSED';
+      }
+    }
+
+    async function testWAQI() {
+      const section = createSection('WAQI API Test (Beijing)');
+      resultsDiv.appendChild(section);
+
+      if (!WAQI_KEY) {
+        section.querySelector('pre').textContent = '❌ No API key found. Add VITE_WAQI_API_KEY to .env.local';
+        section.classList.add('error');
+        section.querySelector('.status').className = 'status error';
+        section.querySelector('.status').textContent = 'SKIPPED';
+        return;
+      }
+
+      try {
+        const url = `https://api.waqi.info/feed/geo:39.9;116.4/?token=${WAQI_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        section.querySelector('pre').textContent = JSON.stringify(data, null, 2);
+
+        if (data.status === 'ok') {
+          section.querySelector('.status').className = 'status success';
+          section.querySelector('.status').textContent = 'SUCCESS ✅';
+          section.querySelector('pre').textContent += '\n\n✅ AQI: ' + data.data.aqi + ' - Station: ' + data.data.city.name;
+        } else {
+          section.classList.add('error');
+          section.querySelector('.status').className = 'status error';
+          section.querySelector('.status').textContent = 'FAILED ❌';
+          
+          if (data.data === 'Invalid key') {
+            section.querySelector('pre').textContent = '❌ INVALID API KEY!\n\nGet a new one at: https://aqicn.org/data-platform/token/';
+          }
+        }
+      } catch (error) {
+        section.classList.add('error');
+        section.querySelector('.status').className = 'status error';
+        section.querySelector('.status').textContent = 'ERROR ❌';
+        section.querySelector('pre').textContent = '❌ Error: ' + error.message;
+      }
+    }
+
+    async function testOpenAQ() {
+      const section = createSection('OpenAQ API Test (v3)');
+      resultsDiv.appendChild(section);
+
+      if (!OPENAQ_KEY) {
+        section.querySelector('pre').textContent = '⚠️ No API key found (optional)';
+        section.querySelector('.status').className = 'status pending';
+        section.querySelector('.status').textContent = 'SKIPPED';
+        return;
+      }
+
+      try {
+        const url = 'https://api.openaq.org/v3/locations?limit=1&coordinates=39.9,116.4&radius=25000';
+        const response = await fetch(url, {
+          headers: {
+            'X-API-Key': OPENAQ_KEY
+          }
+        });
+        const data = await response.json();
+
+        section.querySelector('pre').textContent = JSON.stringify(data, null, 2);
+
+        if (data.results && data.results.length > 0) {
+          section.querySelector('.status').className = 'status success';
+          section.querySelector('.status').textContent = 'SUCCESS ✅';
+        } else {
+          section.querySelector('.status').className = 'status pending';
+          section.querySelector('.status').textContent = 'NO DATA';
+        }
+      } catch (error) {
+        section.classList.add('error');
+        section.querySelector('.status').className = 'status error';
+        section.querySelector('.status').textContent = 'ERROR ❌';
+        section.querySelector('pre').textContent = '❌ Error: ' + error.message;
+      }
+    }
+
+    async function testNASA() {
+      const section = createSection('NASA API Test');
+      resultsDiv.appendChild(section);
+
+      if (!NASA_KEY) {
+        section.querySelector('pre').textContent = '⚠️ No API key found (optional)';
+        section.querySelector('.status').className = 'status pending';
+        section.querySelector('.status').textContent = 'SKIPPED';
+        return;
+      }
+
+      try {
+        const url = `https://api.nasa.gov/planetary/apod?api_key=${NASA_KEY}&date=2024-01-01`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.title) {
+          section.querySelector('.status').className = 'status success';
+          section.querySelector('.status').textContent = 'SUCCESS ✅';
+          section.querySelector('pre').textContent = '✅ NASA API is working!\n\nSample response:\n' + JSON.stringify({
+            title: data.title,
+            date: data.date
+          }, null, 2);
+        } else {
+          section.classList.add('error');
+          section.querySelector('.status').className = 'status error';
+          section.querySelector('.status').textContent = 'FAILED ❌';
+          section.querySelector('pre').textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        section.classList.add('error');
+        section.querySelector('.status').className = 'status error';
+        section.querySelector('.status').textContent = 'ERROR ❌';
+        section.querySelector('pre').textContent = '❌ Error: ' + error.message;
+      }
+    }
+
+    function createSection(title) {
+      const div = document.createElement('div');
+      div.className = 'test-section';
+      div.innerHTML = `
+        <h2>${title}<span class="status pending">TESTING...</span></h2>
+        <pre>Running test...</pre>
+      `;
+      return div;
+    }
+
+    // Auto-run tests on load
+    setTimeout(runAllTests, 500);
+  </script>
+</body>
+</html>
