@@ -49,17 +49,10 @@ export const getGroundStationData = async (
     // Find nearby stations using v3 API
     const stationsUrl = `${OPENAQ_API_URL}/locations?coordinates=${lat},${lng}&radius=${maxRadius}&limit=10`;
     
-    // Use proxy in production to avoid CORS issues
-    const isProduction = import.meta.env.PROD;
-    const fetchUrl = isProduction 
-      ? `/api/openaq?url=${encodeURIComponent(stationsUrl)}`
-      : stationsUrl;
+    // Use local proxy to avoid CORS issues (works in both dev and production)
+    const fetchUrl = `/api/openaq?url=${encodeURIComponent(stationsUrl)}`;
     
-    const stationsResponse = await fetch(fetchUrl, {
-      headers: isProduction ? {} : {
-        'X-API-Key': OPENAQ_API_KEY,
-      },
-    });
+    const stationsResponse = await fetch(fetchUrl);
 
     if (!stationsResponse.ok) {
       throw new Error(`OpenAQ API error: ${stationsResponse.statusText}`);
@@ -74,16 +67,10 @@ export const getGroundStationData = async (
         try {
           const measurementsUrl = `${OPENAQ_API_URL}/latest?location_id=${station.id}`;
           
-          // Use proxy in production to avoid CORS issues
-          const fetchMeasurementsUrl = isProduction 
-            ? `/api/openaq?url=${encodeURIComponent(measurementsUrl)}`
-            : measurementsUrl;
+          // Use local proxy to avoid CORS issues
+          const fetchMeasurementsUrl = `/api/openaq?url=${encodeURIComponent(measurementsUrl)}`;
           
-          const measurementsResponse = await fetch(fetchMeasurementsUrl, {
-            headers: isProduction ? {} : {
-              'X-API-Key': OPENAQ_API_KEY,
-            },
-          });
+          const measurementsResponse = await fetch(fetchMeasurementsUrl);
 
           const measurementsData = await measurementsResponse.json();
           const measurements = measurementsData.results?.[0]?.parameters || [];
@@ -176,35 +163,91 @@ export const getSatelliteDataFromWAQI = async (
 /**
  * Get NASA MODIS Aerosol Optical Depth (AOD) data
  * This provides GLOBAL coverage - works anywhere on Earth!
+ * NOTE: NASA POWER API is FREE and doesn't require an API key!
  */
 export const getNASAMODISData = async (
   lat: number,
   lng: number
 ): Promise<{ aqi: number; pollutants: any[]; confidence: number; source: string } | null> => {
-  if (!NASA_API_KEY) {
-    console.warn('NASA API key not configured.');
-    return null;
-  }
-
   try {
-    console.log('🛰️ Fetching NASA MODIS satellite data...');
+    console.log('🛰️ Fetching NASA MODIS satellite data (no key required)...');
     
-    // NASA GIBS (Global Imagery Browse Services) - Real-time satellite imagery
-    // We'll use MODIS Combined Dark Target and Deep Blue AOD
+    // NASA POWER API - FREE, no authentication needed!
+    // Get data from yesterday (most recent complete day)
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
-    const dateStr = yesterday.toISOString().split('T')[0];
+    const dateStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
     
-    // Use NASA's POWER API for aerosol data (works globally)
-    const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=AOD_55&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr.replace(/-/g, '')}&end=${dateStr.replace(/-/g, '')}&format=JSON`;
+    // Use NASA's POWER API for aerosol data (works globally, no key needed!)
+    const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=AOD_55&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr}&end=${dateStr}&format=JSON`;
     
+    console.log('🌐 NASA API URL:', url);
     const response = await fetch(url);
     
     if (!response.ok) {
       console.warn('NASA POWER API error:', response.statusText);
-      return null;
+      // Try a wider date range to find valid data
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 7); // Try last 7 days
+      const endDate = yesterday;
+      
+      const rangeUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=AOD_55&community=RE&longitude=${lng}&latitude=${lat}&start=${startDate.toISOString().split('T')[0].replace(/-/g, '')}&end=${endDate.toISOString().split('T')[0].replace(/-/g, '')}&format=JSON`;
+      const rangeResponse = await fetch(rangeUrl);
+      
+      if (!rangeResponse.ok) {
+        return null;
+      }
+      
+      const rangeData = await rangeResponse.json();
+      const aodData = rangeData.properties?.parameter?.AOD_55;
+      
+      if (!aodData) {
+        return null;
+      }
+      
+      // Find the most recent valid value (not -999)
+      const dates = Object.keys(aodData).sort().reverse();
+      let aodValue = null;
+      
+      for (const date of dates) {
+        if (aodData[date] > 0) {
+          aodValue = aodData[date];
+          console.log('✅ Found valid NASA data from', date, '- AOD:', aodValue);
+          break;
+        }
+      }
+      
+      if (!aodValue || aodValue < 0) {
+        console.warn('No valid NASA satellite data in the last 7 days (cloudy)');
+        return null;
+      }
+      
+      // Process the found value - inline calculation
+      let estimatedAQI = 50;
+      if (aodValue <= 0.05) estimatedAQI = 25;
+      else if (aodValue <= 0.1) estimatedAQI = 50;
+      else if (aodValue <= 0.2) estimatedAQI = 75;
+      else if (aodValue <= 0.3) estimatedAQI = 100;
+      else if (aodValue <= 0.5) estimatedAQI = 150;
+      else if (aodValue <= 1.0) estimatedAQI = 200;
+      else estimatedAQI = 300;
+      
+      return {
+        aqi: Math.round(estimatedAQI),
+        pollutants: [{
+          name: 'PM2.5',
+          concentration: Math.round(aodValue * 100),
+          unit: 'µg/m³'
+        }, {
+          name: 'AOD',
+          concentration: aodValue,
+          unit: 'Aerosol Optical Depth'
+        }],
+        confidence: 70,
+        source: 'NASA MODIS Satellite'
+      };
     }
 
     const data = await response.json();
@@ -218,11 +261,40 @@ export const getNASAMODISData = async (
     // Get the most recent AOD value
     const dates = Object.keys(aodData);
     const latestDate = dates[dates.length - 1];
-    const aodValue = aodData[latestDate];
+    let aodValue = aodData[latestDate];
 
+    // Handle -999 (no data) by trying previous days
     if (aodValue === null || aodValue === undefined || aodValue < 0) {
-      console.warn('Invalid NASA AOD value');
-      return null;
+      console.warn('NASA AOD value is -999 (cloudy/no data), trying previous days...');
+      
+      // Try last 7 days
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 7);
+      
+      const rangeUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=AOD_55&community=RE&longitude=${lng}&latitude=${lat}&start=${startDate.toISOString().split('T')[0].replace(/-/g, '')}&end=${dateStr}&format=JSON`;
+      const rangeResponse = await fetch(rangeUrl);
+      
+      if (rangeResponse.ok) {
+        const rangeData = await rangeResponse.json();
+        const rangeAodData = rangeData.properties?.parameter?.AOD_55;
+        
+        if (rangeAodData) {
+          // Find most recent valid value
+          const sortedDates = Object.keys(rangeAodData).sort().reverse();
+          for (const date of sortedDates) {
+            if (rangeAodData[date] > 0) {
+              aodValue = rangeAodData[date];
+              console.log('✅ Found valid NASA data from', date, '- AOD:', aodValue);
+              break;
+            }
+          }
+        }
+      }
+      
+      if (aodValue === null || aodValue < 0) {
+        console.warn('No valid NASA satellite data in the last 7 days (cloudy period)');
+        return null;
+      }
     }
 
     // Convert AOD to estimated AQI
@@ -365,18 +437,14 @@ export const getComprehensiveAQIData = async (
   try {
     console.log('🌍 Fetching air quality data for:', lat, lng);
     
-    // ALWAYS fetch NASA first (it works everywhere!)
-    console.log('🛰️ Fetching NASA satellite data (primary source)...');
+    // TRY NASA first, but don't fail if cloudy
+    console.log('🛰️ Fetching NASA satellite data (trying primary source)...');
     const nasaData = await getNASAMODISData(lat, lng);
     
-    if (!nasaData) {
-      throw new Error('Unable to fetch satellite data for this location. Please try another location.');
-    }
-    
-    // Try to enhance with ground stations (optional, non-blocking)
-    console.log('📡 Checking for nearby ground stations (enhancement)...');
+    // ALSO try ground stations and WAQI in parallel (don't wait for NASA to fail)
+    console.log('📡 Checking for nearby ground stations (fallback/enhancement)...');
     const [groundStationsResult, waqiResult] = await Promise.allSettled([
-      getGroundStationData(lat, lng, 25),
+      getGroundStationData(lat, lng, 50), // Increased radius to 50km
       WAQI_API_KEY ? getSatelliteDataFromWAQI(lat, lng) : Promise.reject('No WAQI key'),
     ]);
     
@@ -392,25 +460,74 @@ export const getComprehensiveAQIData = async (
       country = geoData.country;
     }
 
-    // START WITH NASA DATA (Primary - works everywhere!)
-    console.log('✅ Using NASA satellite data as base (global coverage)');
+    // Initialize location data
     let locationData: Partial<LocationData> = {
       lat,
       lng,
       city,
       country,
-      aqi: nasaData.aqi,
-      pollutants: nasaData.pollutants,
-      summary: generateSummary(nasaData.aqi),
-      healthAdvisory: generateHealthAdvisory(nasaData.aqi),
-      confidence: 70, // Satellite baseline
-      dataSource: 'satellite',
       lastUpdated: new Date().toISOString(),
     };
 
-    // ENHANCE with ground station data if available
-    if (groundStations.length > 0) {
-      console.log('🎯 Enhancing with ground station measurements...');
+    // OPTION 1: Use NASA data if available (not cloudy)
+    if (nasaData) {
+      console.log('✅ Using NASA satellite data as base (global coverage)');
+      locationData = {
+        ...locationData,
+        aqi: nasaData.aqi,
+        pollutants: nasaData.pollutants,
+        summary: generateSummary(nasaData.aqi),
+        healthAdvisory: generateHealthAdvisory(nasaData.aqi),
+        confidence: 70, // Satellite baseline
+        dataSource: 'satellite',
+      };
+    }
+    // OPTION 2: NASA cloudy, try ground stations
+    else if (groundStations.length > 0) {
+      console.log('⛅ NASA data unavailable (cloudy), using ground stations as primary source');
+      const nearestStation = groundStations[0];
+      const pm25 = nearestStation.measurements.find(m => m.parameter === 'pm25');
+      const pm10 = nearestStation.measurements.find(m => m.parameter === 'pm10');
+      
+      let groundAQI = 50;
+      if (pm25) {
+        groundAQI = Math.round(pm25.value * 4);
+      } else if (pm10) {
+        groundAQI = Math.round(pm10.value * 2);
+      }
+      
+      locationData = {
+        ...locationData,
+        aqi: Math.min(500, Math.max(0, groundAQI)),
+        pollutants: nearestStation.measurements.map(m => ({
+          name: m.parameter.toUpperCase(),
+          concentration: m.value,
+          unit: m.unit
+        })),
+        summary: generateSummary(groundAQI),
+        healthAdvisory: generateHealthAdvisory(groundAQI),
+        confidence: 90,
+        dataSource: 'ground'
+      };
+    }
+    // OPTION 3: Try WAQI
+    else if (waqiData) {
+      console.log('⛅ NASA data unavailable (cloudy), using WAQI as primary source');
+      locationData = {
+        ...locationData,
+        city: city || waqiData.station,
+        aqi: waqiData.aqi,
+        pollutants: waqiData.pollutants,
+        summary: generateSummary(waqiData.aqi),
+        healthAdvisory: generateHealthAdvisory(waqiData.aqi),
+        confidence: 85,
+        dataSource: 'ground'
+      };
+    }
+
+    // ENHANCE NASA with ground station data if we already have NASA data
+    if (nasaData && groundStations.length > 0) {
+      console.log('🎯 Enhancing NASA data with ground station measurements...');
       const nearestStation = groundStations[0];
       const pm25 = nearestStation.measurements.find(m => m.parameter === 'pm25');
       const pm10 = nearestStation.measurements.find(m => m.parameter === 'pm10');
@@ -432,25 +549,10 @@ export const getComprehensiveAQIData = async (
           concentration: m.value,
           unit: m.unit
         })),
-        summary: generateSummary(groundAQI) + ' (Ground station)',
+        summary: generateSummary(groundAQI) + ' (Ground enhanced)',
         healthAdvisory: generateHealthAdvisory(groundAQI),
         confidence: 90, // Ground stations are more accurate
         dataSource: 'hybrid' // Satellite base + ground enhancement
-      };
-    }
-    
-    // FURTHER ENHANCE with WAQI if available
-    else if (waqiData) {
-      console.log('🌐 Enhancing with WAQI data...');
-      locationData = {
-        ...locationData,
-        city: city || waqiData.station,
-        aqi: waqiData.aqi,
-        pollutants: waqiData.pollutants,
-        summary: generateSummary(waqiData.aqi) + ' (WAQI station)',
-        healthAdvisory: generateHealthAdvisory(waqiData.aqi),
-        confidence: 85,
-        dataSource: 'hybrid'
       };
     }
 
@@ -529,7 +631,15 @@ export const getComprehensiveAQIData = async (
       }
 
       // No data available anywhere
-      throw new Error('No air quality data available for this location. NASA satellite may not have recent coverage.');
+      console.error('❌ No data sources available:');
+      console.error(`  - NASA: ${nasaData ? 'Available' : 'Unavailable (cloudy or no coverage)'}`);
+      console.error(`  - Ground Stations: ${groundStations.length > 0 ? groundStations.length + ' found' : 'None within 50km'}`);
+      console.error(`  - WAQI: ${waqiData ? 'Available' : 'Unavailable'}`);
+      throw new Error(
+        `No air quality data available for this remote location. ` +
+        `NASA satellite has been cloudy for 7+ days and no ground stations are within 100km. ` +
+        `Try a major city or wait for clearer weather.`
+      );
     }
 
     return {

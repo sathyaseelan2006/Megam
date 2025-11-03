@@ -7,9 +7,22 @@ import GlobeComponent from './components/GlobeComponent';
 import EducationPanel from './components/EducationPanel';
 import HistoryPanel from './components/HistoryPanel';
 import { LocationData } from './types';
-import { smartLocationSearch } from './services/geocodingService';
+import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
 import { getComprehensiveAQIData } from './services/satelliteService';
 import { historyService } from './services/historyService';
+
+// Utility: Calculate distance between two coordinates (Haversine formula)
+const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 function App() {
   const globeRef = useRef<GlobeMethods>(null);
@@ -119,22 +132,43 @@ function App() {
     setIsLoading(true);
     setError(null);
     setLocationData(null);
+    
     try {
-      // Get real-time satellite/ground station data
+      console.log(`🔍 Clicked at coordinates: ${lat.toFixed(3)}, ${lng.toFixed(3)}`);
+      
+      // STEP 1: Find out what location was clicked (reverse geocode)
+      const locationInfo = await reverseGeocode(lat, lng);
+      console.log(`📍 Identified location: ${locationInfo.city}, ${locationInfo.country}`);
+      
+      // STEP 2: Get air quality data for the clicked coordinates
+      // NASA satellite will work anywhere, ground stations will enhance if available
       const satelliteData = await getComprehensiveAQIData(lat, lng);
       
-      setLocationData(satelliteData);
-      console.log('✅ Using 100% real-time data');
+      // STEP 3: Merge the geocoded location name with the air quality data
+      const finalData = {
+        ...satelliteData,
+        city: locationInfo.city, // Use the reverse-geocoded city name
+        country: locationInfo.country,
+      };
+      
+      setLocationData(finalData);
+      
+      // Calculate distance from clicked point to data source (if different)
+      const distance = calculateDistance(lat, lng, satelliteData.lat, satelliteData.lng);
+      if (distance > 1) { // More than 1km away
+        console.log(`📏 Showing data from nearest monitoring location (${distance.toFixed(1)}km away)`);
+      }
+      console.log(`✅ Data source: ${satelliteData.dataSource} (${satelliteData.confidence}% confidence)`);
       
       // Add to history
       historyService.addToHistory({
         location: {
-          city: satelliteData.city,
-          country: satelliteData.country,
-          lat: satelliteData.lat,
-          lng: satelliteData.lng
+          city: finalData.city,
+          country: finalData.country,
+          lat: satelliteData.lat, // Use the actual data location coordinates
+          lng: satelliteData.lng,
         },
-        aqi: satelliteData.aqi
+        aqi: finalData.aqi
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No air quality data available for this location.');

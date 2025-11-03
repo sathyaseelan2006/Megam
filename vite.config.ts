@@ -8,6 +8,28 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 5173,
         host: 'localhost',
+        proxy: {
+          // Proxy OpenAQ API requests to avoid CORS in development
+          '/api/openaq': {
+            target: 'https://api.openaq.org/v3',
+            changeOrigin: true,
+            rewrite: (path) => {
+              // Extract the URL from query parameter
+              const url = new URL(`http://localhost${path}`);
+              const targetUrl = url.searchParams.get('url');
+              if (targetUrl) {
+                return new URL(targetUrl).pathname + new URL(targetUrl).search;
+              }
+              return path.replace(/^\/api\/openaq/, '');
+            },
+            configure: (proxy, options) => {
+              proxy.on('proxyReq', (proxyReq, req, res) => {
+                // Add the API key header
+                proxyReq.setHeader('X-API-Key', env.VITE_OPENAQ_API_KEY || '');
+              });
+            },
+          },
+        },
       },
       plugins: [react()],
       define: {
