@@ -6,6 +6,7 @@ import GlobeToolbar from './components/GlobeToolbar';
 import GlobeComponent from './components/GlobeComponent';
 import EducationPanel from './components/EducationPanel';
 import HistoryPanel from './components/HistoryPanel';
+import ForecastPanel from './components/ForecastPanel';
 import { LocationData } from './types';
 import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
 import { getComprehensiveAQIData } from './services/satelliteService';
@@ -32,6 +33,7 @@ function App() {
   const [isSatelliteView, setIsSatelliteView] = useState(false);
   const [showEducation, setShowEducation] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
 
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
@@ -171,7 +173,60 @@ function App() {
         aqi: finalData.aqi
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No air quality data available for this location.');
+      // If the exact location fails, try to find the nearest major city
+      const errorMessage = err instanceof Error ? err.message : '';
+      
+      if (errorMessage.includes('remote location') || errorMessage.includes('no ground stations')) {
+        console.log('⚠️ Remote location detected. Searching for nearest major city...');
+        setError('No data at this exact location. Searching for nearest city...');
+        
+        try {
+          // Try to search for nearby cities using the location name
+          const locationInfo = await reverseGeocode(lat, lng);
+          console.log(`🔍 Trying nearby city: ${locationInfo.city}`);
+          
+          // Search for the city by name (will find nearest monitoring station)
+          if (locationInfo.city && locationInfo.city !== 'Unknown Location') {
+            const cityData = await smartLocationSearch(locationInfo.city);
+            const nearbyData = await getComprehensiveAQIData(cityData.lat, cityData.lng, cityData.city);
+            
+            const finalData = {
+              ...nearbyData,
+              city: cityData.city,
+              country: cityData.country,
+            };
+            
+            const distance = calculateDistance(lat, lng, cityData.lat, cityData.lng);
+            console.log(`✅ Found data from ${cityData.city} (${distance.toFixed(1)}km away)`);
+            
+            setLocationData(finalData);
+            setError(null); // Clear the searching message
+            
+            // Show info message
+            setTimeout(() => {
+              console.log(`ℹ️ Showing data for nearest city: ${cityData.city} (${distance.toFixed(0)}km from clicked location)`);
+            }, 100);
+            
+            // Add to history
+            historyService.addToHistory({
+              location: {
+                city: finalData.city,
+                country: finalData.country,
+                lat: nearbyData.lat,
+                lng: nearbyData.lng,
+              },
+              aqi: finalData.aqi
+            });
+          } else {
+            setError('This area is too remote. Try clicking on a major city or coastline.');
+          }
+        } catch (fallbackErr) {
+          console.error('Fallback city search also failed:', fallbackErr);
+          setError('Unable to find air quality data for this area. Try clicking on a major city.');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'No air quality data available for this location.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -282,8 +337,23 @@ function App() {
           />
         </div>
 
-        {/* Education and History Buttons */}
+        {/* Action Buttons */}
         <div className='absolute bottom-4 right-4 z-10 flex space-x-2 pointer-events-auto'>
+          <button
+            onClick={() => locationData && setShowForecast(!showForecast)}
+            disabled={!locationData}
+            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
+              showForecast 
+                ? 'bg-purple-500/50 border-purple-400 text-white' 
+                : locationData
+                  ? 'bg-gray-700/60 hover:bg-purple-500/50 border-gray-600 text-gray-300'
+                  : 'bg-gray-700/30 border-gray-700 text-gray-500 cursor-not-allowed'
+            }`}
+            title={locationData ? "ML Forecast (7-30 days)" : "Select a location first"}
+            aria-label="Toggle forecast panel"
+          >
+            <span className="text-2xl">🔮</span>
+          </button>
           <button
             onClick={() => setShowEducation(!showEducation)}
             className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
@@ -329,6 +399,16 @@ function App() {
             <HistoryPanel 
               onClose={() => setShowHistory(false)}
               onLocationSelect={handleHistoryLocationSelect}
+            />
+          </div>
+        )}
+
+        {/* Forecast Panel */}
+        {showForecast && locationData && (
+          <div className='pointer-events-auto'>
+            <ForecastPanel 
+              data={locationData}
+              onClose={() => setShowForecast(false)}
             />
           </div>
         )}
