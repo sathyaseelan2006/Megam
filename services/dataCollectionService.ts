@@ -51,7 +51,8 @@ const fetchOpenAQHistory = async (
     startDate.setDate(startDate.getDate() - days);
 
     // OpenAQ v3 measurements endpoint
-    const url = `/api/openaq/locations?coordinates=${lat},${lng}&radius=${radius}&limit=100`;
+    const openaqUrl = `https://api.openaq.org/v3/locations?coordinates=${lat},${lng}&radius=${radius}&limit=100`;
+    const url = `/api/openaq?url=${encodeURIComponent(openaqUrl)}`;
     
     console.log(`📡 Fetching OpenAQ locations near ${lat.toFixed(2)}, ${lng.toFixed(2)}...`);
     
@@ -73,7 +74,8 @@ const fetchOpenAQHistory = async (
     console.log(`📊 Found station: ${station.name} (${locationId})`);
 
     // Fetch historical measurements
-    const measurementsUrl = `/api/openaq/locations/${locationId}/measurements?date_from=${startDate.toISOString()}&date_to=${endDate.toISOString()}&limit=1000`;
+    const openaqMeasurementsUrl = `https://api.openaq.org/v3/locations/${locationId}/measurements?date_from=${startDate.toISOString()}&date_to=${endDate.toISOString()}&limit=1000`;
+    const measurementsUrl = `/api/openaq?url=${encodeURIComponent(openaqMeasurementsUrl)}`;
     
     const measurementsResponse = await fetch(measurementsUrl);
     if (!measurementsResponse.ok) {
