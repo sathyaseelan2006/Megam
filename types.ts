@@ -11,6 +11,16 @@ export interface Pollutant {
   unit: string;
 }
 
+export interface WeatherData {
+  temperature?: number; // Celsius
+  humidity?: number; // Percentage
+  pressure?: number; // hPa
+  windSpeed?: number; // m/s
+  windDirection?: number; // degrees
+  description?: string; // e.g., "Clear sky", "Cloudy"
+  icon?: string; // Weather condition icon
+}
+
 export interface LocationData {
   city: string;
   country: string;
@@ -20,6 +30,7 @@ export interface LocationData {
   summary: string;
   pollutants: Pollutant[];
   healthAdvisory: string[];
+  weather?: WeatherData; // Weather/Climate information
   dataSource?: 'satellite' | 'ground' | 'hybrid' | 'ai';
   lastUpdated?: string;
   confidence?: number; // 0-100

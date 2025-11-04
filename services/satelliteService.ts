@@ -8,22 +8,25 @@ import { SatelliteData, GroundStationData, LocationData } from '../types';
 // accurate, verifiable pollution measurements.
 //
 // DATA SOURCES:
-// 1. OpenAQ API - Ground station data from 10,000+ stations worldwide
-// 2. WAQI API - World Air Quality Index with satellite + ground data
-// 3. Sentinel-5P (Copernicus) - European satellite for NO2, SO2, O3, CO
-// 4. NASA MODIS - Aerosol Optical Depth (AOD) measurements
+// 1. IQAir AirVisual - Premium air quality data from 80,000+ stations (FASTEST!)
+// 2. OpenAQ API - Ground station data from 10,000+ stations worldwide
+// 3. WAQI API - World Air Quality Index with satellite + ground data
+// 4. NASA MODIS - Aerosol Optical Depth (AOD) measurements (global coverage)
 //
 // API Keys Required (store in .env.local):
+// - VITE_IQAIR_API_KEY (https://www.iqair.com/air-pollution-data-api/) - RECOMMENDED!
 // - VITE_OPENAQ_API_KEY (https://docs.openaq.org/)
 // - VITE_WAQI_API_KEY (https://aqicn.org/api/)
 // - VITE_NASA_API_KEY (https://api.nasa.gov/)
 // ============================================================================
 
+const IQAIR_API_URL = 'https://api.airvisual.com/v2';
 const OPENAQ_API_URL = 'https://api.openaq.org/v3';
 const WAQI_API_URL = 'https://api.waqi.info';
 const NASA_EARTHDATA_URL = 'https://appeears.earthdatacloud.nasa.gov/api';
 
 // Get API keys from environment
+const IQAIR_API_KEY = import.meta.env.VITE_IQAIR_API_KEY;
 const OPENAQ_API_KEY = import.meta.env.VITE_OPENAQ_API_KEY;
 const WAQI_API_KEY = import.meta.env.VITE_WAQI_API_KEY;
 const NASA_API_KEY = import.meta.env.VITE_NASA_API_KEY;
@@ -102,6 +105,96 @@ export const getGroundStationData = async (
 };
 
 /**
+ * Fetch air quality data from IQAir AirVisual API
+ * IQAir provides premium data from 80,000+ monitoring stations worldwide
+ * FREE tier: 1,000 calls/day
+ * BONUS: Also returns real-time weather data!
+ */
+export const getIQAirData = async (
+  lat: number,
+  lng: number
+): Promise<{ aqi: number; pollutants: any[]; station: string; city: string; weather?: any } | null> => {
+  if (!IQAIR_API_KEY) {
+    console.warn('IQAir API key not configured. IQAir data unavailable.');
+    return null;
+  }
+
+  try {
+    const url = `${IQAIR_API_URL}/nearest_city?lat=${lat}&lon=${lng}&key=${IQAIR_API_KEY}`;
+    console.log('🌐 Calling IQAir API for coordinates:', lat, lng);
+    
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        console.warn('IQAir API rate limit exceeded (1,000 calls/day)');
+        return null;
+      }
+      throw new Error(`IQAir API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.status !== 'success') {
+      console.warn('IQAir API returned non-success status:', data.status);
+      return null;
+    }
+
+    const airQuality = data.data?.current?.pollution;
+    const weather = data.data?.current?.weather;
+    const location = data.data?.location;
+
+    if (!airQuality) {
+      console.warn('IQAir: No pollution data available for this location');
+      return null;
+    }
+
+    console.log('📡 IQAir Response:', {
+      city: location?.name,
+      aqi: airQuality.aqius,
+      mainPollutant: airQuality.mainus,
+      weather: weather ? `${weather.tp}°C, ${weather.hu}% humidity` : 'N/A'
+    });
+
+    // Parse pollutants (IQAir primarily provides PM2.5 and AQI)
+    const pollutants = [];
+    
+    if (airQuality.aqius) {
+      pollutants.push({
+        parameter: 'pm25',
+        value: airQuality.aqius, // IQAir's US AQI is based on PM2.5
+        unit: 'aqi',
+        displayName: 'PM2.5'
+      });
+    }
+
+    // Parse weather data separately (don't mix with pollutants)
+    let weatherData = null;
+    if (weather) {
+      weatherData = {
+        temperature: weather.tp, // Temperature in Celsius
+        humidity: weather.hu, // Humidity percentage
+        pressure: weather.pr, // Atmospheric pressure in hPa
+        windSpeed: weather.ws, // Wind speed in m/s
+        windDirection: weather.wd, // Wind direction in degrees
+        icon: weather.ic // Weather icon URL
+      };
+    }
+
+    return {
+      aqi: airQuality.aqius, // US AQI standard
+      pollutants,
+      station: `${location?.name}, ${location?.state || ''}, ${location?.country || ''}`.trim(),
+      city: location?.name || 'Unknown',
+      weather: weatherData
+    };
+  } catch (error) {
+    console.error('Error fetching IQAir data:', error);
+    return null;
+  }
+};
+
+/**
  * Fetch satellite data from WAQI (World Air Quality Index)
  * WAQI aggregates data from multiple sources including satellites
  */
@@ -157,84 +250,6 @@ export const getSatelliteDataFromWAQI = async (
   } catch (error) {
     console.error('Error fetching WAQI data:', error);
     throw error;
-  }
-};
-
-/**
- * Get Copernicus CAMS (Copernicus Atmosphere Monitoring Service) data
- * This provides atmospheric model outputs (PM2.5, PM10, NO2, O3, CO, SO2)
- * CAMS is model-based and works even in cloudy conditions. Access requires
- * ADS (Atmosphere Data Store) credentials. To enable, set the following in
- * your .env.local or environment:
- *   VITE_CAMS_USERNAME=<your_ads_username>
- *   VITE_CAMS_API_KEY=<your_ads_api_key>
- *
- * NOTE: This function contains a basic implementation and may need
- * adaptation depending on the exact ADS endpoint you choose. If credentials
- * are not provided the function returns null and the system will fallback.
- */
-export const getCAMSData = async (
-  lat: number,
-  lng: number
-): Promise<{ aqi: number; pollutants: any[]; confidence: number; source: string } | null> => {
-  const CAMS_USER = import.meta.env.VITE_CAMS_USERNAME;
-  const CAMS_KEY = import.meta.env.VITE_CAMS_API_KEY;
-
-  if (!CAMS_USER || !CAMS_KEY) {
-    console.log('CAMS credentials not configured - skipping CAMS fetch');
-    return null;
-  }
-
-  try {
-    console.log('🛰️ Fetching Copernicus CAMS data (requires ADS credentials)...');
-
-    // NOTE: The ADS/CAMS REST API often requires POST requests and a specific
-    // payload (time range, variables, area). Here we try a simple GET-style
-    // timeseries endpoint as a placeholder. In production you should replace
-    // this with the exact ADS request payload or use the official Python client.
-    const endpoint = `https://ads.atmosphere.copernicus.eu/api/v2/timeseries?lat=${lat}&lon=${lng}&format=JSON&variable=pm2p5,pm10,no2,o3,co,so2`;
-
-    const response = await fetch(endpoint, {
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${CAMS_USER}:${CAMS_KEY}`),
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      console.warn('CAMS API returned', response.status, response.statusText);
-      return null;
-    }
-
-    const data = await response.json();
-
-    // Attempt to extract recent pollutant values from the response. The
-    // structure of CAMS responses may vary; this is a best-effort parse.
-    const sample = Array.isArray(data) ? data[0] : data;
-    const pm25 = sample?.pm2p5 ?? sample?.pm25 ?? null;
-    const pm10 = sample?.pm10 ?? null;
-
-    if (pm25 == null && pm10 == null) {
-      console.warn('CAMS response did not contain PM values');
-      return null;
-    }
-
-    // Very rough AQI estimate from PM2.5 (same conversion used elsewhere)
-    const estimatedAQI = pm25 != null ? Math.round(pm25 * 4) : (pm10 != null ? Math.round(pm10 * 2) : 50);
-
-    const pollutants: any[] = [];
-    if (pm25 != null) pollutants.push({ name: 'PM2.5', concentration: pm25, unit: 'µg/m³' });
-    if (pm10 != null) pollutants.push({ name: 'PM10', concentration: pm10, unit: 'µg/m³' });
-
-    return {
-      aqi: Math.min(500, Math.max(0, estimatedAQI)),
-      pollutants,
-      confidence: 95,
-      source: 'CAMS (Copernicus)'
-    };
-  } catch (error) {
-    console.error('Error fetching CAMS data:', error);
-    return null;
   }
 };
 
@@ -514,24 +529,30 @@ export const getComprehensiveAQIData = async (
 ): Promise<LocationData & { groundStations?: GroundStationData[]; nearestStationDistance?: number }> => {
   try {
     console.log('🌍 Fetching air quality data for:', lat, lng);
+    console.log('🏁 Starting parallel data fetch from all sources...');
     
-    // Try CAMS first (atmospheric model, works in clouds), then NASA as fallback
-    console.log('🛰️ Fetching Copernicus CAMS data (if configured)...');
-    const camsData = await getCAMSData(lat, lng);
-
-    // TRY NASA as secondary satellite source (no key required)
-    console.log('🛰️ Fetching NASA MODIS satellite data (secondary source)...');
-    const nasaData = await getNASAMODISData(lat, lng);
-
-    // ALSO try ground stations and WAQI in parallel (don't wait for satellite calls)
-    console.log('📡 Checking for nearby ground stations (fallback/enhancement)...');
-    const [groundStationsResult, waqiResult] = await Promise.allSettled([
-      getGroundStationData(lat, lng, 50), // Increased radius to 50km
+    // **PARALLEL FETCHING**: Start ALL API calls simultaneously (4 sources!)
+    // The fastest one that succeeds will be used with priority: IQAir > Ground > NASA > WAQI
+    const [iqairResult, nasaResult, groundStationsResult, waqiResult] = await Promise.allSettled([
+      IQAIR_API_KEY ? getIQAirData(lat, lng) : Promise.reject('No IQAir key'),
+      getNASAMODISData(lat, lng),
+      getGroundStationData(lat, lng, 50),
       WAQI_API_KEY ? getSatelliteDataFromWAQI(lat, lng) : Promise.reject('No WAQI key'),
     ]);
     
+    // Extract successful results
+    const iqairData = iqairResult.status === 'fulfilled' ? iqairResult.value : null;
+    const nasaData = nasaResult.status === 'fulfilled' ? nasaResult.value : null;
     const groundStations = groundStationsResult.status === 'fulfilled' ? groundStationsResult.value : [];
     const waqiData = waqiResult.status === 'fulfilled' ? waqiResult.value : null;
+
+    // Log which sources responded
+    console.log('📊 Data sources available:', {
+      IQAir: !!iqairData,
+      NASA: !!nasaData,
+      Ground: groundStations.length > 0,
+      WAQI: !!waqiData
+    });
 
     // Get city name
     let city = cityName;
@@ -551,35 +572,34 @@ export const getComprehensiveAQIData = async (
       lastUpdated: new Date().toISOString(),
     };
 
-    // OPTION 1: Use CAMS data if available (highest priority)
-    if (typeof camsData !== 'undefined' && camsData) {
-      console.log('✅ Using CAMS data as primary source (high confidence)');
+    // **PRIORITY SYSTEM** (use best available data)
+    // Priority 1: IQAir (80,000+ stations, fastest API, premium data, 92% confidence)
+    // Priority 2: Ground stations (real measurements from OpenAQ, 95% confidence)
+    // Priority 3: NASA (satellite-based, global coverage, 70% confidence)
+    // Priority 4: WAQI (aggregator, fallback, 80% confidence)
+
+    if (iqairData) {
+      // BEST: IQAir AirVisual data (80,000+ stations, most comprehensive + WEATHER!)
+      console.log('✅ Using IQAIR data (80,000+ stations network - PREMIUM + Weather)');
       locationData = {
         ...locationData,
-        aqi: camsData.aqi,
-        pollutants: camsData.pollutants,
-        summary: generateSummary(camsData.aqi),
-        healthAdvisory: generateHealthAdvisory(camsData.aqi),
-        confidence: camsData.confidence ?? 95,
-        dataSource: 'cams',
+        city: iqairData.city || city,
+        aqi: Math.min(500, Math.max(0, iqairData.aqi)),
+        pollutants: iqairData.pollutants.map(m => ({
+          name: m.displayName || m.parameter.toUpperCase(),
+          concentration: m.value,
+          unit: m.unit
+        })),
+        weather: iqairData.weather, // Include real-time weather data!
+        summary: generateSummary(iqairData.aqi),
+        healthAdvisory: generateHealthAdvisory(iqairData.aqi),
+        confidence: 92,
+        dataSource: 'ground'
       };
     }
-    // OPTION 2: Use NASA data if CAMS not available (satellite estimate)
-    else if (nasaData) {
-      console.log('✅ Using NASA satellite data as base (global coverage)');
-      locationData = {
-        ...locationData,
-        aqi: nasaData.aqi,
-        pollutants: nasaData.pollutants,
-        summary: generateSummary(nasaData.aqi),
-        healthAdvisory: generateHealthAdvisory(nasaData.aqi),
-        confidence: 70, // Satellite baseline
-        dataSource: 'satellite',
-      };
-    }
-    // OPTION 2: NASA cloudy, try ground stations
     else if (groundStations.length > 0) {
-      console.log('⛅ NASA data unavailable (cloudy), using ground stations as primary source');
+      // VERY GOOD: Ground station data (real measurements from OpenAQ)
+      console.log('✅ Using GROUND STATION data (OpenAQ - high accuracy)');
       const nearestStation = groundStations[0];
       const pm25 = nearestStation.measurements.find(m => m.parameter === 'pm25');
       const pm10 = nearestStation.measurements.find(m => m.parameter === 'pm10');
@@ -601,13 +621,26 @@ export const getComprehensiveAQIData = async (
         })),
         summary: generateSummary(groundAQI),
         healthAdvisory: generateHealthAdvisory(groundAQI),
-        confidence: 90,
+        confidence: 95,
         dataSource: 'ground'
       };
+    } 
+    else if (nasaData) {
+      // GOOD: NASA satellite data (global coverage)
+      console.log('✅ Using NASA satellite data (global coverage)');
+      locationData = {
+        ...locationData,
+        aqi: nasaData.aqi,
+        pollutants: nasaData.pollutants,
+        summary: generateSummary(nasaData.aqi),
+        healthAdvisory: generateHealthAdvisory(nasaData.aqi),
+        confidence: 70,
+        dataSource: 'satellite',
+      };
     }
-    // OPTION 3: Try WAQI
     else if (waqiData) {
-      console.log('⛅ NASA data unavailable (cloudy), using WAQI as primary source');
+      // FALLBACK: WAQI aggregator
+      console.log('✅ Using WAQI data (aggregator fallback)');
       locationData = {
         ...locationData,
         city: city || waqiData.station,
@@ -615,39 +648,8 @@ export const getComprehensiveAQIData = async (
         pollutants: waqiData.pollutants,
         summary: generateSummary(waqiData.aqi),
         healthAdvisory: generateHealthAdvisory(waqiData.aqi),
-        confidence: 85,
+        confidence: 80,
         dataSource: 'ground'
-      };
-    }
-
-    // ENHANCE NASA with ground station data if we already have NASA data
-    if (nasaData && groundStations.length > 0) {
-      console.log('🎯 Enhancing NASA data with ground station measurements...');
-      const nearestStation = groundStations[0];
-      const pm25 = nearestStation.measurements.find(m => m.parameter === 'pm25');
-      const pm10 = nearestStation.measurements.find(m => m.parameter === 'pm10');
-      
-      // Calculate ground-based AQI
-      let groundAQI = 50;
-      if (pm25) {
-        groundAQI = Math.round(pm25.value * 4);
-      } else if (pm10) {
-        groundAQI = Math.round(pm10.value * 2);
-      }
-      
-      // Use ground station data (more accurate!)
-      locationData = {
-        ...locationData,
-        aqi: Math.min(500, Math.max(0, groundAQI)),
-        pollutants: nearestStation.measurements.map(m => ({
-          name: m.parameter.toUpperCase(),
-          concentration: m.value,
-          unit: m.unit
-        })),
-        summary: generateSummary(groundAQI) + ' (Ground enhanced)',
-        healthAdvisory: generateHealthAdvisory(groundAQI),
-        confidence: 90, // Ground stations are more accurate
-        dataSource: 'hybrid' // Satellite base + ground enhancement
       };
     }
 

@@ -6,26 +6,42 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 5173,
+        port: 5174,
         host: 'localhost',
         proxy: {
           // Proxy OpenAQ API requests to avoid CORS in development
           '/api/openaq': {
-            target: 'https://api.openaq.org/v3',
+            target: 'https://api.openaq.org',
             changeOrigin: true,
+            secure: false,
             rewrite: (path) => {
-              // Extract the URL from query parameter
-              const url = new URL(`http://localhost${path}`);
-              const targetUrl = url.searchParams.get('url');
-              if (targetUrl) {
-                return new URL(targetUrl).pathname + new URL(targetUrl).search;
+              // Extract the URL from query parameter and extract path
+              try {
+                const url = new URL(`http://localhost:5174${path}`);
+                const targetUrl = url.searchParams.get('url');
+                if (targetUrl) {
+                  const parsed = new URL(targetUrl);
+                  const rewritten = parsed.pathname + parsed.search;
+                  console.log(`🔄 Proxy rewrite: ${path} -> ${rewritten}`);
+                  return rewritten;
+                }
+              } catch (error) {
+                console.error('❌ Proxy rewrite error:', error);
               }
               return path.replace(/^\/api\/openaq/, '');
             },
             configure: (proxy, options) => {
+              proxy.on('error', (err, req, res) => {
+                console.error('❌ Proxy error:', err);
+              });
               proxy.on('proxyReq', (proxyReq, req, res) => {
-                // Add the API key header
-                proxyReq.setHeader('X-API-Key', env.VITE_OPENAQ_API_KEY || '');
+                // Add the API key header for OpenAQ
+                const apiKey = env.VITE_OPENAQ_API_KEY || '';
+                console.log(`🔑 Adding OpenAQ API key: ${apiKey.substring(0, 10)}...`);
+                proxyReq.setHeader('X-API-Key', apiKey);
+              });
+              proxy.on('proxyRes', (proxyRes, req, res) => {
+                console.log(`✅ Proxy response: ${proxyRes.statusCode} for ${req.url}`);
               });
             },
           },

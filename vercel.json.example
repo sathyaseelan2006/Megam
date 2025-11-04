@@ -1,0 +1,14 @@
+# Optional: vercel.json config to allow bots (USE WITH CAUTION)
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "all"
+        }
+      ]
+    }
+  ]
+}
