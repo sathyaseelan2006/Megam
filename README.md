@@ -96,110 +96,214 @@
 
 - **PWA Support** - Installable as a Progressive Web App
 
-### 📊 Comprehensive Pollutant Tracking
-
-| Pollutant | Description | Health Impact |---
-
-|-----------|-------------|---------------|
-
-| **PM2.5** | Fine particles | Respiratory & cardiovascular |## 🎬 Demo
-
-| **PM10** | Coarse particles | Lung irritation |
-
-| **O₃** | Ozone | Breathing difficulties |![Aura Demo](./docs/demo.gif)
-
-| **NO₂** | Nitrogen dioxide | Lung inflammation |
-
-| **SO₂** | Sulfur dioxide | Respiratory illness |---
-
-| **CO** | Carbon monoxide | Reduced oxygen delivery |
-
-## 🚀 Quick Start
-
-### 🎓 Educational Content
-
-- Detailed pollutant information### Prerequisites
-
-- Health advisory for each AQI level
-
-- Sources and environmental impacts- **Node.js** 18+ (LTS recommended)
-
-- WHO safe level guidelines- **npm** or **yarn** or **pnpm**
-
-- **Gemini API Key** - Get yours at [Google AI Studio](https://ai.google.dev/)
-
-### 📖 History & Favorites
-
-- Track visited locations### Installation
-
-- Save favorite places
-
-- View past searches1. **Clone the repository**
-
-- Easy re-access to important locations   ```bash
-
-   git clone https://github.com/yourusername/aura.git
-
 ---   cd aura
+"""
+# Megam — Air Quality Intelligence
 
-   ```
+Clean, modern README that explains how Megam works, how to run it, and the methods used.
 
-## 🚀 Installation
+[Live Demo](https://megam-n2z95mbl0-sathyaseelan2006s-projects.vercel.app) • [GitHub Repo](https://github.com/sathyaseelan2006/Megam)
 
-2. **Install dependencies**
+---
 
-### Prerequisites   ```bash
+## Quick summary
 
-- **Node.js** 18+ and npm   npm install
+- Purpose: provide accurate, real-time air quality and weather information worldwide using a mix of ground stations and satellite data.
+- Primary data sources: IQAir (AirVisual), OpenAQ (ground stations), WAQI (aggregator), NASA MODIS (satellite).
+- Stack: React 19 + TypeScript, Vite, TensorFlow.js (for ML predictions), react-globe.gl (3D globe).
 
-- **Git**   ```
+---
 
-- Modern web browser (Chrome, Firefox, Safari, Edge)
+## Highlights — what this project does
 
-3. **Set up environment variables**
+- Interactive 3D globe to query any point on Earth and show AQI + weather.
+- Data priority system (best available source is chosen automatically).
+- Real-time weather included (IQAir provides temperature, humidity, pressure, wind).
+- Lightweight LSTM model in TensorFlow.js for short-term AQI predictions with persistence in IndexedDB.
+- Local proxy (Vite or serverless) for OpenAQ to avoid CORS in development.
 
-### Quick Start   ```bash
+---
 
-   # Copy the example env file
+## Architecture (high level)
 
-```bash   cp .env.example .env.local
+```mermaid
+flowchart TB
+   A[User: Click on globe] --> B[Client: getComprehensiveAQIData]
+   B -->|parallel| C(IQAir API)
+   B -->|parallel| D(OpenAQ proxy)
+   B -->|parallel| E(WAQI)
+   B -->|parallel| F(NASA MODIS)
+   C --> G{IQAir Data?}
+   D --> H{GroundStations?}
+   E --> I{WAQI Data?}
+   F --> J{NASA AOD?}
+   G -->|yes| K[Use IQAir (primary): AQI + Weather]
+   H -->|yes| L[Use Ground Station]
+   J -->|yes| M[Use NASA satellite]
+   I -->|yes| N[Use WAQI fallback]
+   K & L & M & N --> O[LocationData -> InfoPanel]
+   O --> P[Optional: TF.js LSTM prediction]
+```
 
-# Clone the repository   
+Notes: the client starts all API calls in parallel (Promise.allSettled) and uses a simple priority to pick the best available data:
 
-git clone https://github.com/sathyaseelan2006/Megam.git   # Edit .env.local and add your Gemini API key
+- IQAir (if key present) → Ground (OpenAQ) → NASA MODIS → WAQI
 
-   GEMINI_API_KEY=your_api_key_here
+This gives fastest responses and highest-quality measurements while ensuring global coverage.
 
-# Navigate to project directory   ```
+---
 
+## Key files to inspect
+
+- `services/satelliteService.ts` — orchestrates all data fetches and contains priority logic.
+- `components/InfoPanel.tsx` — renders AQI, pollutant breakdown and the redesigned weather card.
+- `types.ts` — TypeScript definitions including `LocationData` and `WeatherData`.
+- `vite.config.ts` — dev proxy configuration for OpenAQ (CORS workaround).
+
+---
+
+## How data is fetched and chosen (method)
+
+1. User clicks a lat/lng on the globe.
+2. `getComprehensiveAQIData(lat,lng)` is called.
+3. The function fires parallel requests to available sources with `Promise.allSettled`.
+4. The system examines results and applies this selection rule:
+
+    - If IQAir returns data -> use IQAir (AQI + weather).
+    - Else if nearby OpenAQ station(s) -> use ground station measurements.
+    - Else if NASA satellite data valid -> use satellite-derived AOD mapped to AQI.
+    - Else if WAQI returns a station -> use WAQI.
+
+5. The chosen result is normalized to a `LocationData` object used by the UI and ML components.
+
+Why this method?
+
+- Parallel fetches minimize latency (fastest successful source wins).
+- Prioritizing ground measurements yields better accuracy; IQAir improves coverage and gives weather data.
+- Satellite AOD is used only when ground data is absent (global fallback).
+
+---
+
+## Weather & Climate
+
+IQAir provides a `current.weather` object (temperature °C, humidity %, pressure hPa, wind speed m/s, wind direction °). We surface that in `InfoPanel` with a compact, modern design. No extra external weather API required by default.
+
+If you want additional climate/time-series data, you can optionally wire OpenWeatherMap or other services in `services/`.
+
+---
+
+## ML: short-term AQI predictions
+
+- Implementation: small LSTM model in `tfjs` (2-layer LSTM, saved to IndexedDB).
+- Purpose: short-term (hours–days) smoothing and trend preview in UI.
+- Model persistence: uses IndexedDB so the model and weights persist across sessions.
+
+Notes: ML is additive (presented as optional prediction), not the source of raw AQI values.
+
+---
+
+## Environment variables
+
+Create `.env.local` (this file must NOT be committed). Example variables:
+
+```env
+# Required
+VITE_OPENAQ_API_KEY=your_openaq_key_here
+
+# Optional (recommended)
+VITE_IQAIR_API_KEY=your_iqair_key_here
+VITE_WAQI_API_KEY=your_waqi_key_here
+VITE_NASA_API_KEY=your_nasa_key_here
+```
+
+Add secrets in Vercel (or your chosen host) for production.
+
+---
+
+## Development — run locally
+
+1. Install
+
+```powershell
+git clone https://github.com/sathyaseelan2006/Megam.git
 cd Megam
+npm install
+cp .env.example .env.local
+# Edit .env.local and add your API keys
+```
 
-4. **Start the development server**
+2. Start dev server (Vite)
 
-# Install dependencies   ```bash
-
-npm install   npm run dev
-
-   ```
-
-# Create environment file
-
-cp .env.example .env.local5. **Open your browser**
-
-   ```
-
-# Add your API keys (see API Setup section)   Navigate to http://localhost:5173
-
-# Edit .env.local with your favorite editor   ```
-
-
-
-# Start development server---
-
+```powershell
 npm run dev
+# Open http://localhost:5174
+```
 
-```## 📦 Build for Production
+3. Click the globe and open the browser console to see which source was used.
 
+---
+
+## Production & deployment
+
+- We recommend Vercel. Add environment variables in the Vercel dashboard and deploy. The repo is already configured to build with Vite.
+
+Power user commands:
+
+```powershell
+# Push to GitHub
+git add .
+git commit -m "feat: add README"
+git push origin main
+
+# Deploy via Vercel CLI
+vercel --prod
+```
+
+---
+
+## Diagrams & flow (quick)
+
+Mermaid diagram above shows the runtime flow. Here is a compact ASCII fallback:
+
+```
+User Click -> Parallel requests -> {IQAir?} -> pick -> normalize -> show
+                               \-> OpenAQ?     
+                               \-> NASA?      
+                               \-> WAQI?      
+```
+
+---
+
+## Testing & troubleshooting
+
+- If you see `404` from `/api/openaq` in dev, ensure Vite is running on the port referenced in `vite.config.ts` and that the dev proxy logs (console) show rewrite actions. The proxy rewrites requests like `/api/openaq?url=https://api.openaq.org/v3/...` to the remote path.
+- NASA satellite AOD may be `-999` on cloudy days — the code falls back through the last 7 days and then to other sources.
+
+---
+
+## Contributing
+
+Contributions welcome. Open a PR against `main`. See `CONTRIBUTING.md` in the repo (or follow these steps):
+
+1. Fork
+2. Create branch
+3. Commit & PR
+
+---
+
+## License
+
+MIT — see `LICENSE`.
+
+---
+
+If you'd like, I can also:
+
+- Generate a `README-screenshot.png` of the new weather UI
+- Add a short `DOCS.md` with architecture diagrams expanded
+- Create a small integration test that simulates a globe click and verifies priority logic
+
+Tell me which of the above you'd like next and I'll implement it.
 
 
 Visit **http://localhost:5173/** and start exploring! 🎉```bash
