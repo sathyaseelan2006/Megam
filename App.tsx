@@ -7,6 +7,8 @@ import GlobeComponent from './components/GlobeComponent';
 import EducationPanel from './components/EducationPanel';
 import HistoryPanel from './components/HistoryPanel';
 import ForecastPanel from './components/ForecastPanel';
+import CookieConsent from './components/CookieConsent';
+import Footer from './components/Footer';
 import { LocationData } from './types';
 import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
 import { getComprehensiveAQIData } from './services/satelliteService';
@@ -338,7 +340,7 @@ function App() {
         </div>
 
         {/* Action Buttons */}
-        <div className='absolute bottom-4 right-4 z-10 flex space-x-2 pointer-events-auto'>
+        <div className='absolute bottom-12 right-4 z-10 flex space-x-2 pointer-events-auto'>
           <button
             onClick={() => locationData && setShowForecast(!showForecast)}
             disabled={!locationData}
@@ -413,6 +415,21 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Cookie Consent Banner */}
+      <CookieConsent 
+        onAccept={() => {
+          console.log('✅ User accepted cookies - analytics enabled');
+          // Initialize Google Analytics or other analytics here
+          // Example: gtag('consent', 'update', { analytics_storage: 'granted' });
+        }}
+        onDecline={() => {
+          console.log('❌ User declined cookies - essential only');
+        }}
+      />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

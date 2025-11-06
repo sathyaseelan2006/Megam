@@ -30,7 +30,7 @@ const ToolbarButton: React.FC<{onClick: () => void, disabled: boolean, isActive:
 
 const GlobeToolbar: React.FC<GlobeToolbarProps> = ({ isSatelliteView, onToggleSatelliteView, onCenterGlobe, loading }) => {
   return (
-    <div className="absolute bottom-4 left-4 z-10 flex space-x-2 animate-fadeIn mx-4 sm:mx-0" style={{ animationDelay: '0.4s' }}>
+    <div className="absolute bottom-16 left-4 z-10 flex space-x-2 animate-fadeIn mx-4 sm:mx-0" style={{ animationDelay: '0.4s' }}>
       <ToolbarButton
         onClick={onToggleSatelliteView}
         disabled={loading}

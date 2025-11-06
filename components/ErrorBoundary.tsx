@@ -10,7 +10,7 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
-  state: State = {
+  public state: State = {
     hasError: false,
   };
 
@@ -22,7 +22,7 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen w-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
@@ -66,7 +66,7 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return this.props.children ?? null;
   }
 }
 
