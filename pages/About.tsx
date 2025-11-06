@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const About: React.FC = () => {
+  useEffect(() => {
+    document.title = 'About — Megam';
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', 'About Megam — mission, data sources, and technology behind the global air quality platform.');
+    else {
+      const m = document.createElement('meta');
+      m.name = 'description';
+      m.content = 'About Megam — mission, data sources, and technology behind the global air quality platform.';
+      document.head.appendChild(m);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black text-gray-100">
       {/* Header */}

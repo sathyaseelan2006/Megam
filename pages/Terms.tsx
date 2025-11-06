@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const Terms: React.FC = () => {
   const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  useEffect(() => {
+    document.title = 'Terms of Service — Megam';
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', 'Megam Terms of Service — legal terms, limitations, and usage policies.');
+    else {
+      const m = document.createElement('meta');
+      m.name = 'description';
+      m.content = 'Megam Terms of Service — legal terms, limitations, and usage policies.';
+      document.head.appendChild(m);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black text-gray-100">

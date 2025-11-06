@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const PrivacyPolicy: React.FC = () => {
   const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  useEffect(() => {
+    document.title = 'Privacy Policy — Megam';
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', 'Megam Privacy Policy — how we collect, use, and protect your data.');
+    else {
+      const m = document.createElement('meta');
+      m.name = 'description';
+      m.content = 'Megam Privacy Policy — how we collect, use, and protect your data.';
+      document.head.appendChild(m);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-black text-gray-100">

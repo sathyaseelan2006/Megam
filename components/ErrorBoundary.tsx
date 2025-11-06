@@ -66,7 +66,8 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children ?? null;
+    // Some TS configurations can narrow `this` in class components; cast to any to access props safely.
+    return (this as any).props?.children ?? null;
   }
 }
 
