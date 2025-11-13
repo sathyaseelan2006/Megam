@@ -1,11 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      // Show footer when mouse is near bottom (within 100px)
+      if (window.innerHeight - e.clientY < 100) {
+        setIsVisible(true);
+      } else {
+        // Hide immediately when mouse moves away
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-slate-900/85 backdrop-blur-md border-t border-gray-800 text-gray-400 py-2 px-4 z-[15] pointer-events-auto">
+    <footer 
+      className={`fixed bottom-0 left-0 right-0 bg-slate-900/85 backdrop-blur-md border-t border-gray-800 text-gray-400 py-2 px-4 z-[15] pointer-events-auto transition-transform duration-300 ease-in-out ${
+        isVisible ? 'translate-y-0' : 'translate-y-full'
+      }`}
+    >
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           {/* Brand */}

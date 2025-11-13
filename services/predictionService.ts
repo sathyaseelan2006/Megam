@@ -118,22 +118,11 @@ const analyzeTrend = (historicalAQI: number[]): 'improving' | 'stable' | 'worsen
  */
 const getHistoricalData = async (lat: number, lng: number, days: number = 30): Promise<number[]> => {
   // TODO: Replace with actual API call to fetch historical data
-  // For now, simulate with random variation around a base AQI
-  
   console.log(`📊 Fetching ${days} days of historical data...`);
   
-  // Simulate historical AQI values (would come from database in production)
-  const baseAQI = 50 + Math.random() * 50; // Random base between 50-100
-  const historicalData: number[] = [];
-  
-  for (let i = days; i > 0; i--) {
-    const dayVariation = (Math.random() - 0.5) * 20; // ±10 variation
-    const seasonalEffect = getSeasonalFactor(new Date(Date.now() - i * 24 * 60 * 60 * 1000));
-    const aqi = Math.max(0, Math.min(500, baseAQI * seasonalEffect + dayVariation));
-    historicalData.push(Math.round(aqi));
-  }
-  
-  return historicalData;
+  // For now, return empty - we should NOT generate fake data
+  // Better to be honest with users that data isn't available
+  return [];
 };
 
 /**
@@ -250,6 +239,12 @@ export const generateForecast = async (
 
     trainingDataset = dataset;
 
+    // Check if we have enough data for ML
+    if (dataset.data.length < 3) {
+      console.warn(`⚠️ Insufficient data: only ${dataset.data.length} points available. Need at least 3.`);
+      throw new Error('Insufficient historical data for ML predictions');
+    }
+
     // Step 3: Train model if needed
     if (!model) {
       console.log('🏋️ No existing model found. Training new LSTM model...');
@@ -257,12 +252,12 @@ export const generateForecast = async (
       // Build fresh LSTM model (now async)
       model = await buildLSTMModel();
       
-      // Train on historical data
+      // Train on historical data (optimized config)
       const config: ModelConfig = {
         sequenceLength: 7,
         features: 7,
-        lstmUnits: 64,
-        epochs: 50, // Reduced from 100 for faster training
+        lstmUnits: 32, // Reduced for performance
+        epochs: 20, // Reduced from 50 for much faster training
         batchSize: 32,
         learningRate: 0.001
       };
@@ -323,10 +318,16 @@ export const generateForecast = async (
       needsTraining
     };
   } catch (error) {
-    console.error('❌ Error generating ML forecast:', error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('❌ Error generating ML forecast:', errorMsg);
     
-    // Fallback to simple pattern-based prediction if ML fails
-    console.log('⚠️ Falling back to pattern-based prediction...');
+    // User-friendly error message
+    if (errorMsg.includes('Insufficient') || errorMsg.includes('Need at least')) {
+      console.warn('⚠️ Not enough historical data available. Using statistical forecast...');
+    } else {
+      console.warn('⚠️ ML prediction failed. Falling back to statistical forecast...');
+    }
+    
     return generateSimpleForecast(lat, lng, currentData, days);
   }
 };
@@ -342,6 +343,12 @@ const generateSimpleForecast = async (
   days: number
 ): Promise<ForecastResult> => {
   const historicalData = await getHistoricalData(lat, lng, 30);
+  
+  // Be honest - if no real data, don't make up predictions
+  if (historicalData.length === 0) {
+    throw new Error('No historical data available for this location');
+  }
+  
   const trend = analyzeTrend(historicalData);
   const predictions: PredictionData[] = [];
   

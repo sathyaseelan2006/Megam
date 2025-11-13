@@ -89,3 +89,12 @@ export interface GroundStationData {
   }[];
   dataQuality: 'high' | 'medium' | 'low';
 }
+
+export interface Review {
+  id: string;
+  username: string;
+  comment: string;
+  timestamp: number;
+  rating?: number; // Optional 1-5 star rating
+  location?: string; // Optional location context
+}

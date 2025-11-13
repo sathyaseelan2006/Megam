@@ -7,12 +7,14 @@ import GlobeComponent from './components/GlobeComponent';
 import EducationPanel from './components/EducationPanel';
 import HistoryPanel from './components/HistoryPanel';
 import ForecastPanel from './components/ForecastPanel';
+import ReviewsPanel from './components/ReviewsPanel';
 import CookieConsent from './components/CookieConsent';
 import Footer from './components/Footer';
 import { LocationData } from './types';
 import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
 import { getComprehensiveAQIData } from './services/satelliteService';
 import { historyService } from './services/historyService';
+import { preloadTensorFlow } from './services/mlPreloader';
 
 // Utility: Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -36,6 +38,19 @@ function App() {
   const [showEducation, setShowEducation] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
+
+  // Smart ML preloading: only load when user shows interest
+  useEffect(() => {
+    // Preload when user interacts with location features
+    const shouldPreload = locationData !== null || showForecast;
+    
+    if (shouldPreload) {
+      preloadTensorFlow().catch(err => {
+        console.log('ML features will use Fast Mode:', err);
+      });
+    }
+  }, [locationData, showForecast]);
 
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
@@ -272,6 +287,7 @@ function App() {
       if (e.key === 'Escape') {
         if (showEducation) setShowEducation(false);
         else if (showHistory) setShowHistory(false);
+        else if (showReviews) setShowReviews(false);
         else if (locationData || error) handlePanelClose();
       }
       // Ctrl/Cmd + K to focus search
@@ -294,7 +310,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [locationData, error, showEducation, showHistory, handlePanelClose]);
+  }, [locationData, error, showEducation, showHistory, showReviews, handlePanelClose]);
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
@@ -384,6 +400,20 @@ function App() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </button>
+          <button
+            onClick={() => setShowReviews(!showReviews)}
+            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
+              showReviews 
+                ? 'bg-cyan-500/50 border-cyan-400 text-white' 
+                : 'bg-gray-700/60 hover:bg-cyan-500/50 border-gray-600 text-gray-300'
+            }`}
+            title="Reviews & Feedback"
+            aria-label="Toggle reviews panel"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+            </svg>
+          </button>
         </div>
 
         {/* Education Panel */}
@@ -411,6 +441,15 @@ function App() {
             <ForecastPanel 
               data={locationData}
               onClose={() => setShowForecast(false)}
+            />
+          </div>
+        )}
+
+        {/* Reviews Panel */}
+        {showReviews && (
+          <div className='pointer-events-auto'>
+            <ReviewsPanel 
+              onClose={() => setShowReviews(false)}
             />
           </div>
         )}

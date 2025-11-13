@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ForecastResult, generateForecast } from '../services/predictionService';
 import { TrainingProgress } from '../services/mlModelService';
+import { generateSimpleForecast, SimpleForecastResult } from '../services/simplePredictionService';
+import { isTensorFlowReady } from '../services/mlPreloader';
 import { LocationData } from '../types';
 import { CloseIcon } from './icons';
 import { TrainingModal } from './TrainingModal';
@@ -11,31 +13,63 @@ interface ForecastPanelProps {
 }
 
 const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
-  const [forecast, setForecast] = useState<ForecastResult | null>(null);
+  const [forecast, setForecast] = useState<ForecastResult | SimpleForecastResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
   const [isTraining, setIsTraining] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState<TrainingProgress | null>(null);
+  const [useML, setUseML] = useState(() => isTensorFlowReady()); // Auto-enable if TF is ready
 
   useEffect(() => {
     const loadForecast = async () => {
       setLoading(true);
       try {
-        const result = await generateForecast(
-          data.lat,
-          data.lng,
-          data,
-          days,
-          (progress: TrainingProgress) => {
-            // Training progress callback
-            setIsTraining(true);
-            setTrainingProgress(progress);
-          }
-        );
-        setForecast(result);
-        setIsTraining(false);
+        if (useML) {
+          // Use heavy ML model (TensorFlow.js LSTM)
+          // Note: generateForecast already has internal fallback to simple forecast
+          const result = await generateForecast(
+            data.lat,
+            data.lng,
+            data,
+            days,
+            (progress: TrainingProgress) => {
+              setIsTraining(true);
+              setTrainingProgress(progress);
+            }
+          );
+          setForecast(result);
+          setIsTraining(false);
+        } else {
+          // Use lightweight statistical prediction (instant!)
+          const result = generateSimpleForecast(data, days);
+          setForecast(result);
+        }
       } catch (error) {
-        console.error('Failed to load forecast:', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('Failed to load forecast:', errorMsg);
+        
+        // Show user-friendly error message
+        setForecast({
+          location: {
+            city: data.city,
+            country: data.country,
+            lat: data.lat,
+            lng: data.lng
+          },
+          currentAQI: data.aqi,
+          predictions: [],
+          modelInfo: {
+            algorithm: 'Error',
+            trainedOn: 'N/A',
+            accuracy: 0,
+            isRealML: false,
+            dataSource: errorMsg.includes('No historical data') 
+              ? 'No historical air quality data available for this location. Try a major city with monitoring stations.'
+              : 'Unable to generate forecast. Please try again later.',
+            trainingDays: 0
+          },
+          needsTraining: false
+        });
         setIsTraining(false);
       } finally {
         setLoading(false);
@@ -43,7 +77,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
     };
 
     loadForecast();
-  }, [data, days]);
+  }, [data, days, useML]);
 
   const getAQIColor = (aqi: number): string => {
     if (aqi <= 50) return 'bg-green-500';
@@ -127,6 +161,32 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
             </div>
           </div>
 
+          {/* ML Toggle */}
+          <div className="mb-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">Prediction Mode</p>
+                <p className="text-xs text-gray-400">
+                  {useML ? '🧠 AI/ML Model (slower, more accurate)' : '⚡ Fast Statistical (instant)'}
+                </p>
+              </div>
+              <button
+                onClick={() => setUseML(!useML)}
+                title={useML ? "Switch to Fast Mode" : "Switch to ML Mode"}
+                aria-label={useML ? "Switch to Fast Mode" : "Switch to ML Mode"}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  useML ? 'bg-cyan-500' : 'bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    useML ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Forecast Days Selector */}
           <div className="mb-4 flex gap-2">
             <button
@@ -155,10 +215,24 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
             </button>
           </div>
 
-          {/* Predictions */}
+          {/* Predictions or Error Message */}
           <div className="space-y-2 mb-4">
             <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Daily Predictions</h3>
-            {forecast.predictions.map((pred, index) => {
+            
+            {forecast.predictions.length === 0 ? (
+              <div className="p-6 bg-yellow-900/20 border border-yellow-600/30 rounded-lg text-center">
+                <span className="text-4xl mb-2 block">⚠️</span>
+                <p className="text-yellow-200 font-semibold mb-2">No Data Available</p>
+                <p className="text-sm text-gray-300 mb-3">
+                  {forecast.modelInfo.dataSource}
+                </p>
+                <p className="text-xs text-gray-400">
+                  Forecasts require historical air quality measurements from monitoring stations. 
+                  Try searching for a major city with active air quality monitors.
+                </p>
+              </div>
+            ) : (
+              forecast.predictions.map((pred, index) => {
               const date = new Date(pred.date);
               const isWeekend = date.getDay() === 0 || date.getDay() === 6;
               
@@ -197,7 +271,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
                   </div>
                   
                   {/* Factors (show for first 3 days) */}
-                  {index < 3 && pred.factors.length > 0 && (
+                  {index < 3 && pred.factors && pred.factors.length > 0 && (
                     <div className="mt-2">
                       <p className="text-xs text-gray-400 mb-1">Key factors:</p>
                       <ul className="text-xs text-gray-300 space-y-1">
@@ -212,7 +286,8 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
                   )}
                 </div>
               );
-            })}
+            })
+            )}
           </div>
 
           {/* Model Info */}

@@ -7,17 +7,23 @@
 
 import { TrainingDataset, HistoricalDataPoint } from './dataCollectionService';
 
-// Lazy load TensorFlow.js to avoid blocking the main thread
+// TensorFlow.js instance (should be preloaded by mlPreloader)
 let tf: typeof import('@tensorflow/tfjs') | null = null;
 
 const loadTensorFlow = async () => {
-  if (!tf) {
-    console.log('📦 Loading TensorFlow.js...');
-    tf = await import('@tensorflow/tfjs');
-    // Set backend to WebGL for better performance
-    await tf.ready();
-    console.log('✅ TensorFlow.js ready:', tf.version);
+  if (tf) {
+    return tf;
   }
+  
+  // TensorFlow should already be loaded by preloader
+  // But if not, load it now
+  console.log('📦 Loading TensorFlow.js...');
+  tf = await import('@tensorflow/tfjs');
+  
+  // Ensure it's ready
+  await tf.ready();
+  console.log('✅ TensorFlow.js ready:', tf.version, 'Backend:', tf.getBackend());
+  
   return tf;
 };
 
@@ -46,12 +52,12 @@ export interface PredictionResult {
   uncertainty: number; // Standard deviation
 }
 
-// Default model configuration
+// Default model configuration (optimized for performance)
 const DEFAULT_CONFIG: ModelConfig = {
   sequenceLength: 7, // Use last 7 days to predict next day
   features: 7, // AQI, PM2.5, PM10, O3, NO2, SO2, CO
-  lstmUnits: 64, // 64 neurons in LSTM layer
-  epochs: 100, // Train for 100 iterations
+  lstmUnits: 32, // Reduced from 64 for faster training
+  epochs: 30, // Reduced from 100 for faster training (still effective)
   batchSize: 32,
   learningRate: 0.001
 };
@@ -203,11 +209,11 @@ export const trainModel = async (
   console.log(`📊 Training set: ${trainInputs.length} sequences`);
   console.log(`📊 Validation set: ${valInputs.length} sequences`);
 
-  // Convert to tensors
-  const xTrain = tfjs.tensor3d(trainInputs);
-  const yTrain = tfjs.tensor2d(trainOutputs);
-  const xVal = tfjs.tensor3d(valInputs);
-  const yVal = tfjs.tensor2d(valOutputs);
+  // Convert to tensors with explicit shapes
+  const xTrain = tfjs.tensor3d(trainInputs, [trainInputs.length, config.sequenceLength, config.features]);
+  const yTrain = tfjs.tensor2d(trainOutputs, [trainOutputs.length, 1]);
+  const xVal = tfjs.tensor3d(valInputs, [valInputs.length, config.sequenceLength, config.features]);
+  const yVal = tfjs.tensor2d(valOutputs, [valOutputs.length, 1]);
 
   const startTime = Date.now();
 
@@ -266,8 +272,10 @@ export const predictFuture = async (
   const tfjs = await loadTensorFlow();
   console.log(`🔮 Predicting next ${days} days...`);
 
-  if (recentData.length < config.sequenceLength) {
-    throw new Error(`Need at least ${config.sequenceLength} days of recent data`);
+  // Allow predictions with as little as 3 days of data
+  const minDataPoints = Math.min(3, config.sequenceLength);
+  if (recentData.length < minDataPoints) {
+    throw new Error(`Need at least ${minDataPoints} days of recent data (got ${recentData.length})`);
   }
 
   // Get normalization params from training
@@ -278,8 +286,14 @@ export const predictFuture = async (
 
   const predictions: PredictionResult[] = [];
   
-  // Use last N days as starting sequence
-  let currentSequence = recentData.slice(-config.sequenceLength);
+  // Use last N days as starting sequence (adapt to available data)
+  const effectiveSequenceLength = Math.min(config.sequenceLength, recentData.length);
+  let currentSequence = recentData.slice(-effectiveSequenceLength);
+  
+  // Pad sequence if needed (repeat last values)
+  while (currentSequence.length < config.sequenceLength) {
+    currentSequence.unshift(currentSequence[0]);
+  }
 
   for (let day = 1; day <= days; day++) {
     // Normalize current sequence
@@ -292,7 +306,7 @@ export const predictFuture = async (
       });
 
     // Convert to tensor [1, sequenceLength, features]
-    const inputTensor = tfjs.tensor3d([normalizedSequence]);
+    const inputTensor = tfjs.tensor3d([normalizedSequence], [1, config.sequenceLength, config.features]);
 
     // Make prediction
     const outputTensor = model.predict(inputTensor) as any;
