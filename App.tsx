@@ -8,6 +8,7 @@ import EducationPanel from './components/EducationPanel';
 import HistoryPanel from './components/HistoryPanel';
 import ForecastPanel from './components/ForecastPanel';
 import ReviewsPanel from './components/ReviewsPanel';
+import AnalyticsPanel from './components/AnalyticsPanel';
 import CookieConsent from './components/CookieConsent';
 import Footer from './components/Footer';
 import { LocationData } from './types';
@@ -39,6 +40,7 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Smart ML preloading: only load when user shows interest
   useEffect(() => {
@@ -288,6 +290,7 @@ function App() {
         if (showEducation) setShowEducation(false);
         else if (showHistory) setShowHistory(false);
         else if (showReviews) setShowReviews(false);
+        else if (showAnalytics) setShowAnalytics(false);
         else if (locationData || error) handlePanelClose();
       }
       // Ctrl/Cmd + K to focus search
@@ -310,7 +313,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [locationData, error, showEducation, showHistory, showReviews, handlePanelClose]);
+  }, [locationData, error, showEducation, showHistory, showReviews, showAnalytics, handlePanelClose]);
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
@@ -357,6 +360,21 @@ function App() {
 
         {/* Action Buttons */}
         <div className='absolute bottom-12 right-4 z-10 flex space-x-2 pointer-events-auto'>
+          <button
+            onClick={() => locationData && setShowAnalytics(!showAnalytics)}
+            disabled={!locationData}
+            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
+              showAnalytics 
+                ? 'bg-blue-500/50 border-blue-400 text-white' 
+                : locationData
+                  ? 'bg-gray-700/60 hover:bg-blue-500/50 border-gray-600 text-gray-300'
+                  : 'bg-gray-700/30 border-gray-700 text-gray-500 cursor-not-allowed'
+            }`}
+            title={locationData ? "Monthly & Yearly Analysis" : "Select a location first"}
+            aria-label="Toggle analytics panel"
+          >
+            <span className="text-2xl">📊</span>
+          </button>
           <button
             onClick={() => locationData && setShowForecast(!showForecast)}
             disabled={!locationData}
@@ -431,6 +449,16 @@ function App() {
             <HistoryPanel 
               onClose={() => setShowHistory(false)}
               onLocationSelect={handleHistoryLocationSelect}
+            />
+          </div>
+        )}
+
+        {/* Analytics Panel */}
+        {showAnalytics && locationData && (
+          <div className='pointer-events-auto'>
+            <AnalyticsPanel 
+              data={locationData}
+              onClose={() => setShowAnalytics(false)}
             />
           </div>
         )}
