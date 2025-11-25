@@ -94,7 +94,7 @@ const ReviewsPanel: React.FC<ReviewsPanelProps> = ({ onClose }) => {
 
   const renderStars = (currentRating: number, isInteractive: boolean = false) => {
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
@@ -103,8 +103,8 @@ const ReviewsPanel: React.FC<ReviewsPanelProps> = ({ onClose }) => {
             onClick={() => isInteractive && setRating(star)}
             onMouseEnter={() => isInteractive && setHoveredRating(star)}
             onMouseLeave={() => isInteractive && setHoveredRating(0)}
-            className={`text-xl transition-all ${
-              isInteractive ? 'cursor-pointer hover:scale-110' : 'cursor-default'
+            className={`text-2xl p-2 transition-colors ${
+              isInteractive ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
             }`}
           >
             {star <= (isInteractive ? (hoveredRating || rating) : currentRating) ? '⭐' : '☆'}

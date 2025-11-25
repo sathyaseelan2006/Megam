@@ -56,7 +56,12 @@ export const getGroundStationData = async (
     const fetchUrl = `/api/openaq?url=${encodeURIComponent(stationsUrl)}`;
     
     const stationsResponse = await fetch(fetchUrl);
-
+    if (stationsResponse.status === 429) {
+      throw new Error('OpenAQ API rate limit exceeded. Please wait and try again later.');
+    }
+    if (stationsResponse.status === 404) {
+      throw new Error('No ground station data found for this location.');
+    }
     if (!stationsResponse.ok) {
       throw new Error(`OpenAQ API error: ${stationsResponse.statusText}`);
     }
@@ -64,21 +69,36 @@ export const getGroundStationData = async (
     const stationsData = await stationsResponse.json();
     const stations = stationsData.results || [];
 
+    // Simple in-memory cache for measurements (per session)
+    const measurementCache: Record<string, any> = {};
+
     // Fetch measurements for each station
     const groundStations: GroundStationData[] = await Promise.all(
       stations.map(async (station: any) => {
         try {
           const measurementsUrl = `${OPENAQ_API_URL}/latest?location_id=${station.id}`;
-          
-          // Use local proxy to avoid CORS issues
           const fetchMeasurementsUrl = `/api/openaq?url=${encodeURIComponent(measurementsUrl)}`;
-          
+
+          // Use cache if available
+          if (measurementCache[station.id]) {
+            return measurementCache[station.id];
+          }
+
           const measurementsResponse = await fetch(fetchMeasurementsUrl);
+          if (measurementsResponse.status === 429) {
+            throw new Error('OpenAQ API rate limit exceeded for measurements. Please wait and try again.');
+          }
+          if (measurementsResponse.status === 404) {
+            throw new Error('No measurements found for this station.');
+          }
+          if (!measurementsResponse.ok) {
+            throw new Error(`OpenAQ measurements error: ${measurementsResponse.statusText}`);
+          }
 
           const measurementsData = await measurementsResponse.json();
           const measurements = measurementsData.results?.[0]?.parameters || [];
 
-          return {
+          const result = {
             stationId: station.id,
             stationName: station.name,
             distance: calculateDistance(lat, lng, station.coordinates?.latitude, station.coordinates?.longitude),
@@ -90,6 +110,8 @@ export const getGroundStationData = async (
             })),
             dataQuality: determineDataQuality(measurements),
           };
+          measurementCache[station.id] = result;
+          return result;
         } catch (error) {
           console.error(`Error fetching measurements for station ${station.id}:`, error);
           return null;
@@ -123,13 +145,16 @@ export const getIQAirData = async (
     const url = `${IQAIR_API_URL}/nearest_city?lat=${lat}&lon=${lng}&key=${IQAIR_API_KEY}`;
     console.log('🌐 Calling IQAir API for coordinates:', lat, lng);
     
-    const response = await fetch(url);
 
+    const response = await fetch(url);
+    if (response.status === 429) {
+      console.warn('IQAir API rate limit exceeded (1,000 calls/day)');
+      throw new Error('IQAir API rate limit exceeded. Please wait and try again later.');
+    }
+    if (response.status === 404) {
+      throw new Error('No IQAir data found for this location.');
+    }
     if (!response.ok) {
-      if (response.status === 429) {
-        console.warn('IQAir API rate limit exceeded (1,000 calls/day)');
-        return null;
-      }
       throw new Error(`IQAir API error: ${response.statusText}`);
     }
 

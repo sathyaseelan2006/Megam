@@ -40,6 +40,19 @@ export interface YearlyAnalysis {
   yearOverYearChange?: number; // compared to previous year
 }
 
+export interface WeeklyAnalysis {
+  dayOfWeek: string; // 'Monday', 'Tuesday', etc.
+  date: string; // 'YYYY-MM-DD'
+  avgAQI: number;
+  minAQI: number;
+  maxAQI: number;
+  avgPM25: number;
+  avgPM10: number;
+  category: 'good' | 'moderate' | 'unhealthy';
+  source: string;
+  confidence: number;
+}
+
 export interface PollutantTrend {
   pollutant: string;
   currentAvg: number;
@@ -285,30 +298,133 @@ export const analyzePollutantTrends = (
 };
 
 /**
+ * Analyze weekly (last 7 days) day-by-day breakdown
+ */
+export const analyzeWeeklyTrends = (data: HistoricalDataPoint[]): WeeklyAnalysis[] => {
+  const now = Date.now();
+  const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+  const last7Days = data.filter(d => d.timestamp > sevenDaysAgo);
+  
+  const weeklyAnalysis: WeeklyAnalysis[] = [];
+  
+  // Get the last 7 days
+  const endDate = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const currentDate = new Date(endDate);
+    currentDate.setDate(currentDate.getDate() - i);
+    const dateStr = currentDate.toISOString().split('T')[0];
+    
+    // Find data for this specific day
+    const dayData = last7Days.filter(d => d.date === dateStr);
+    
+    if (dayData.length > 0) {
+      const point = dayData[0]; // Should only be one point per day
+      
+      weeklyAnalysis.push({
+        dayOfWeek: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        date: dateStr,
+        avgAQI: point.aqi,
+        minAQI: point.aqi,
+        maxAQI: point.aqi,
+        avgPM25: point.pm25,
+        avgPM10: point.pm10,
+        category: categorizeAQI(point.aqi),
+        source: point.source,
+        confidence: point.confidence
+      });
+    } else {
+      // No data for this day - show placeholder
+      weeklyAnalysis.push({
+        dayOfWeek: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        date: dateStr,
+        avgAQI: 0,
+        minAQI: 0,
+        maxAQI: 0,
+        avgPM25: 0,
+        avgPM10: 0,
+        category: 'good',
+        source: 'N/A',
+        confidence: 0
+      });
+    }
+  }
+  
+  return weeklyAnalysis;
+};
+
+/**
  * Get quick summary for a location
  */
 export const getQuickSummary = (data: HistoricalDataPoint[]): {
-  last30Days: { avgAQI: number; trend: string };
-  last12Months: { avgAQI: number; trend: string };
+  last7Days: { avgAQI: number; avgPM25: number; avgPM10: number; trend: string };
+  last30Days: { avgAQI: number; avgPM25: number; avgPM10: number; trend: string };
+  last12Months: { avgAQI: number; avgPM25: number; avgPM10: number; trend: string };
   bestTime: string;
   worstTime: string;
 } => {
   const now = Date.now();
+  const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
   const twelveMonthsAgo = now - (365 * 24 * 60 * 60 * 1000);
   
+  const last7Days = data.filter(d => d.timestamp > sevenDaysAgo);
   const last30Days = data.filter(d => d.timestamp > thirtyDaysAgo);
   const last12Months = data.filter(d => d.timestamp > twelveMonthsAgo);
   
+  const avg7Days = last7Days.length > 0
+    ? last7Days.reduce((sum, d) => sum + d.aqi, 0) / last7Days.length
+    : 0;
+  
+  const pm25_7Days = last7Days.filter(d => d.pm25 > 0);
+  const avgPM25_7Days = pm25_7Days.length > 0
+    ? pm25_7Days.reduce((sum, d) => sum + d.pm25, 0) / pm25_7Days.length
+    : 0;
+  
+  const pm10_7Days = last7Days.filter(d => d.pm10 > 0);
+  const avgPM10_7Days = pm10_7Days.length > 0
+    ? pm10_7Days.reduce((sum, d) => sum + d.pm10, 0) / pm10_7Days.length
+    : 0;
+
   const avg30Days = last30Days.length > 0
     ? last30Days.reduce((sum, d) => sum + d.aqi, 0) / last30Days.length
+    : 0;
+  
+  const pm25_30Days = last30Days.filter(d => d.pm25 > 0);
+  const avgPM25_30Days = pm25_30Days.length > 0
+    ? pm25_30Days.reduce((sum, d) => sum + d.pm25, 0) / pm25_30Days.length
+    : 0;
+  
+  const pm10_30Days = last30Days.filter(d => d.pm10 > 0);
+  const avgPM10_30Days = pm10_30Days.length > 0
+    ? pm10_30Days.reduce((sum, d) => sum + d.pm10, 0) / pm10_30Days.length
     : 0;
   
   const avg12Months = last12Months.length > 0
     ? last12Months.reduce((sum, d) => sum + d.aqi, 0) / last12Months.length
     : 0;
   
+  const pm25_12Months = last12Months.filter(d => d.pm25 > 0);
+  const avgPM25_12Months = pm25_12Months.length > 0
+    ? pm25_12Months.reduce((sum, d) => sum + d.pm25, 0) / pm25_12Months.length
+    : 0;
+  
+  const pm10_12Months = last12Months.filter(d => d.pm10 > 0);
+  const avgPM10_12Months = pm10_12Months.length > 0
+    ? pm10_12Months.reduce((sum, d) => sum + d.pm10, 0) / pm10_12Months.length
+    : 0;
+  
   // Determine trends
+  // Weekly trend (compare first half of the week vs second half)
+  const weekMid = Math.floor(last7Days.length / 2);
+  const firstWeek = last7Days.slice(0, weekMid);
+  const lastWeek = last7Days.slice(weekMid);
+  const trend7 = firstWeek.length > 0 && lastWeek.length > 0
+    ? calculateTrend(
+        lastWeek.reduce((sum, d) => sum + d.aqi, 0) / lastWeek.length,
+        firstWeek.reduce((sum, d) => sum + d.aqi, 0) / firstWeek.length
+      )
+    : 'stable';
+
   const first15Days = last30Days.slice(0, 15);
   const last15Days = last30Days.slice(-15);
   const trend30 = first15Days.length > 0 && last15Days.length > 0
@@ -325,12 +441,22 @@ export const getQuickSummary = (data: HistoricalDataPoint[]): {
   const worstTime = sortedMonths[sortedMonths.length - 1]?.monthName || 'N/A';
   
   return {
+    last7Days: {
+      avgAQI: Math.round(avg7Days),
+      avgPM25: Math.round(avgPM25_7Days * 10) / 10,
+      avgPM10: Math.round(avgPM10_7Days * 10) / 10,
+      trend: trend7
+    },
     last30Days: {
       avgAQI: Math.round(avg30Days),
+      avgPM25: Math.round(avgPM25_30Days * 10) / 10,
+      avgPM10: Math.round(avgPM10_30Days * 10) / 10,
       trend: trend30
     },
     last12Months: {
       avgAQI: Math.round(avg12Months),
+      avgPM25: Math.round(avgPM25_12Months * 10) / 10,
+      avgPM10: Math.round(avgPM10_12Months * 10) / 10,
       trend: sortedMonths.length > 1 ? 
         calculateTrend(sortedMonths[sortedMonths.length - 1].avgAQI, sortedMonths[0].avgAQI) : 'stable'
     },
