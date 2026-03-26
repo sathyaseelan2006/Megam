@@ -17,7 +17,7 @@ export interface HistoricalDataPoint {
   no2: number;
   so2: number;
   co: number;
-  source: 'openaq' | 'nasa' | 'waqi' | 'interpolated';
+  source: 'openaq' | 'openmeteo' | 'waqi' | 'interpolated';
   confidence: number; // 0-1 score
 }
 
@@ -35,6 +35,14 @@ export interface TrainingDataset {
   completeness: number; // % of days with data
 }
 
+const avg = (vals: number[]) => (vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0);
+
+// Simple approximation used across the app (see satelliteService.ts)
+const estimateAQIFromPM25 = (pm25: number): number => {
+  if (!Number.isFinite(pm25) || pm25 <= 0) return 0;
+  return Math.min(500, Math.max(0, Math.round(pm25 * 4)));
+};
+
 /**
  * Fetch historical data from OpenAQ API v3
  * Returns daily average AQI for the last N days
@@ -45,7 +53,8 @@ const fetchOpenAQHistory = async (
   days: number
 ): Promise<HistoricalDataPoint[]> => {
   try {
-    const radius = 50000; // 50km search radius
+    // OpenAQ v3 radius is capped (meters). Keep this at/under 25km to avoid 422.
+    const radius = 25000; // 25km search radius
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -58,7 +67,14 @@ const fetchOpenAQHistory = async (
     
     const locationsResponse = await fetch(url);
     if (!locationsResponse.ok) {
-      throw new Error(`OpenAQ locations failed: ${locationsResponse.status}`);
+      let details = '';
+      try {
+        const errJson = await locationsResponse.json();
+        details = typeof errJson === 'string' ? errJson : JSON.stringify(errJson);
+      } catch {
+        // ignore
+      }
+      throw new Error(`OpenAQ locations failed: ${locationsResponse.status}${details ? ` - ${details}` : ''}`);
     }
     
     const locationsData = await locationsResponse.json();
@@ -74,12 +90,24 @@ const fetchOpenAQHistory = async (
     console.log(`📊 Found station: ${station.name} (${locationId})`);
 
     // Fetch historical measurements
-    const openaqMeasurementsUrl = `https://api.openaq.org/v3/locations/${locationId}/measurements?date_from=${startDate.toISOString()}&date_to=${endDate.toISOString()}&limit=1000`;
+    // OpenAQ v3 exposes measurements as a top-level collection; some per-location routes return 404.
+    const openaqMeasurementsUrl = `https://api.openaq.org/v3/measurements?location_id=${locationId}&date_from=${startDate.toISOString()}&date_to=${endDate.toISOString()}&limit=1000`;
     const measurementsUrl = `/api/openaq?url=${encodeURIComponent(openaqMeasurementsUrl)}`;
     
     const measurementsResponse = await fetch(measurementsUrl);
+    if (measurementsResponse.status === 404) {
+      console.log('❌ No OpenAQ measurements found for this station');
+      return [];
+    }
     if (!measurementsResponse.ok) {
-      throw new Error(`OpenAQ measurements failed: ${measurementsResponse.status}`);
+      let details = '';
+      try {
+        const errJson = await measurementsResponse.json();
+        details = typeof errJson === 'string' ? errJson : JSON.stringify(errJson);
+      } catch {
+        // ignore
+      }
+      throw new Error(`OpenAQ measurements failed: ${measurementsResponse.status}${details ? ` - ${details}` : ''}`);
     }
 
     const measurementsData = await measurementsResponse.json();
@@ -95,80 +123,64 @@ const fetchOpenAQHistory = async (
     }>();
 
     measurementsData.results?.forEach((measurement: any) => {
-      const date = measurement.date.utc.split('T')[0]; // Get YYYY-MM-DD
-      
+      const dateUtc = measurement?.date?.utc || measurement?.date?.local;
+      if (!dateUtc || typeof dateUtc !== 'string') return;
+
+      const date = dateUtc.split('T')[0];
       if (!dailyData.has(date)) {
-        dailyData.set(date, {
-          pm25: [],
-          pm10: [],
-          o3: [],
-          no2: [],
-          so2: [],
-          co: []
-        });
+        dailyData.set(date, { pm25: [], pm10: [], o3: [], no2: [], so2: [], co: [] });
       }
 
+      const value = Number(measurement?.value);
+      if (!Number.isFinite(value)) return;
+
+      const parameter = String(measurement?.parameter || '').toLowerCase();
       const dayData = dailyData.get(date)!;
-      const parameter = measurement.parameter;
-      const value = measurement.value;
 
-      if (parameter === 'pm25') dayData.pm25.push(value);
+      if (parameter === 'pm25' || parameter === 'pm2.5' || parameter === 'pm2_5') dayData.pm25.push(value);
       else if (parameter === 'pm10') dayData.pm10.push(value);
-      else if (parameter === 'o3') dayData.o3.push(value);
-      else if (parameter === 'no2') dayData.no2.push(value);
-      else if (parameter === 'so2') dayData.so2.push(value);
-      else if (parameter === 'co') dayData.co.push(value);
+      else if (parameter === 'o3' || parameter === 'ozone') dayData.o3.push(value);
+      else if (parameter === 'no2' || parameter === 'nitrogen_dioxide') dayData.no2.push(value);
+      else if (parameter === 'so2' || parameter === 'sulphur_dioxide' || parameter === 'sulfur_dioxide') dayData.so2.push(value);
+      else if (parameter === 'co' || parameter === 'carbon_monoxide') dayData.co.push(value);
     });
 
-    // Convert to HistoricalDataPoint array
-    const historicalData: HistoricalDataPoint[] = [];
-    
-    dailyData.forEach((pollutants, dateStr) => {
-      const avgPM25 = pollutants.pm25.length > 0
-        ? pollutants.pm25.reduce((a, b) => a + b, 0) / pollutants.pm25.length
-        : 0;
-      
-      const avgPM10 = pollutants.pm10.length > 0
-        ? pollutants.pm10.reduce((a, b) => a + b, 0) / pollutants.pm10.length
-        : 0;
+    if (dailyData.size === 0) {
+      console.log('❌ No OpenAQ measurements found');
+      return [];
+    }
 
-      const avgO3 = pollutants.o3.length > 0
-        ? pollutants.o3.reduce((a, b) => a + b, 0) / pollutants.o3.length
-        : 0;
+    const historicalData: HistoricalDataPoint[] = Array.from(dailyData.entries())
+      .map(([date, v]) => {
+        const pm25 = avg(v.pm25);
+        const pm10 = avg(v.pm10);
+        const o3 = avg(v.o3);
+        const no2 = avg(v.no2);
+        const so2 = avg(v.so2);
+        const co = avg(v.co);
 
-      const avgNO2 = pollutants.no2.length > 0
-        ? pollutants.no2.reduce((a, b) => a + b, 0) / pollutants.no2.length
-        : 0;
+        const aqiFromPm25 = estimateAQIFromPM25(pm25);
+        const aqiFromPm10 = pm10 > 0 ? Math.min(500, Math.max(0, Math.round(pm10 * 2))) : 0;
+        const aqi = aqiFromPm25 || aqiFromPm10;
 
-      const avgSO2 = pollutants.so2.length > 0
-        ? pollutants.so2.reduce((a, b) => a + b, 0) / pollutants.so2.length
-        : 0;
+        return {
+          timestamp: new Date(date).getTime(),
+          date,
+          aqi,
+          pm25: Math.round(pm25 * 10) / 10,
+          pm10: Math.round(pm10 * 10) / 10,
+          o3: Math.round(o3 * 10) / 10,
+          no2: Math.round(no2 * 10) / 10,
+          so2: Math.round(so2 * 10) / 10,
+          co: Math.round(co * 10) / 10,
+          source: 'openaq' as const,
+          confidence: 0.9
+        };
+      })
+      .sort((a, b) => a.timestamp - b.timestamp);
 
-      const avgCO = pollutants.co.length > 0
-        ? pollutants.co.reduce((a, b) => a + b, 0) / pollutants.co.length
-        : 0;
-
-      // Calculate AQI from PM2.5 (simplified - US EPA formula)
-      const aqi = calculateAQIFromPM25(avgPM25);
-
-      historicalData.push({
-        timestamp: new Date(dateStr).getTime(),
-        date: dateStr,
-        aqi,
-        pm25: Math.round(avgPM25 * 10) / 10,
-        pm10: Math.round(avgPM10 * 10) / 10,
-        o3: Math.round(avgO3 * 10) / 10,
-        no2: Math.round(avgNO2 * 10) / 10,
-        so2: Math.round(avgSO2 * 10) / 10,
-        co: Math.round(avgCO * 10) / 10,
-        source: 'openaq',
-        confidence: pollutants.pm25.length >= 12 ? 1.0 : 0.7 // High confidence if 12+ readings per day
-      });
-    });
-
-    console.log(`✅ Collected ${historicalData.length} days of OpenAQ data`);
-    return historicalData.sort((a, b) => a.timestamp - b.timestamp);
-
+    console.log(`✅ Collected ${historicalData.length} days of OpenAQ measurements`);
+    return historicalData;
   } catch (error) {
     console.error('❌ OpenAQ history fetch failed:', error);
     return [];
@@ -176,96 +188,130 @@ const fetchOpenAQHistory = async (
 };
 
 /**
- * Calculate US EPA AQI from PM2.5 concentration
- * PM2.5 in µg/m³ → AQI (0-500 scale)
+ * Fetch model-based historical air quality from Open-Meteo (global coverage).
+ * We request hourly data and aggregate into daily averages.
+ *
+ * Source: CAMS Global / CAMS Europe (Open-Meteo air quality API)
  */
-const calculateAQIFromPM25 = (pm25: number): number => {
-  if (pm25 < 0) return 0;
-  if (pm25 <= 12.0) return Math.round(((50 - 0) / (12.0 - 0.0)) * pm25 + 0);
-  if (pm25 <= 35.4) return Math.round(((100 - 51) / (35.4 - 12.1)) * (pm25 - 12.1) + 51);
-  if (pm25 <= 55.4) return Math.round(((150 - 101) / (55.4 - 35.5)) * (pm25 - 35.5) + 101);
-  if (pm25 <= 150.4) return Math.round(((200 - 151) / (150.4 - 55.5)) * (pm25 - 55.5) + 151);
-  if (pm25 <= 250.4) return Math.round(((300 - 201) / (250.4 - 150.5)) * (pm25 - 150.5) + 201);
-  if (pm25 <= 350.4) return Math.round(((400 - 301) / (350.4 - 250.5)) * (pm25 - 250.5) + 301);
-  if (pm25 <= 500.4) return Math.round(((500 - 401) / (500.4 - 350.5)) * (pm25 - 350.5) + 401);
-  return 500;
-};
-
-/**
- * Fetch NASA POWER satellite data (backup for ground stations)
- * AOD (Aerosol Optical Depth) can be converted to approximate AQI
- */
-const fetchNASAHistory = async (
+const fetchOpenMeteoHistory = async (
   lat: number,
   lng: number,
   days: number
 ): Promise<HistoricalDataPoint[]> => {
   try {
+    console.log(`🌫️ Fetching Open-Meteo air quality history for ${days} days...`);
+
     const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    const overallStart = new Date(endDate);
+    overallStart.setDate(overallStart.getDate() - (days - 1));
 
-    const startDateStr = startDate.toISOString().split('T')[0].replace(/-/g, '');
-    const endDateStr = endDate.toISOString().split('T')[0].replace(/-/g, '');
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
 
-    const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=AOD_550&community=RE&longitude=${lng}&latitude=${lat}&start=${startDateStr}&end=${endDateStr}&format=JSON`;
+    // Chunk requests to keep URLs and response sizes reasonable.
+    const maxChunkDays = 90;
+    const allDaily: Map<
+      string,
+      { aqi: number[]; pm25: number[]; pm10: number[]; o3: number[]; no2: number[]; so2: number[]; co: number[] }
+    > = new Map();
 
-    console.log(`🛰️ Fetching NASA POWER data for ${days} days...`);
+    for (
+      let chunkStart = new Date(overallStart);
+      chunkStart.getTime() <= endDate.getTime();
+      chunkStart = new Date(chunkStart.getTime())
+    ) {
+      const chunkEnd = new Date(chunkStart);
+      chunkEnd.setDate(chunkEnd.getDate() + maxChunkDays - 1);
+      if (chunkEnd.getTime() > endDate.getTime()) {
+        chunkEnd.setTime(endDate.getTime());
+      }
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`NASA API failed: ${response.status}`);
+      const url = new URL('https://air-quality-api.open-meteo.com/v1/air-quality');
+      url.searchParams.set('latitude', String(lat));
+      url.searchParams.set('longitude', String(lng));
+      url.searchParams.set('hourly', 'us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide');
+      url.searchParams.set('timezone', 'GMT');
+      url.searchParams.set('start_date', fmt(chunkStart));
+      url.searchParams.set('end_date', fmt(chunkEnd));
+
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        let details = '';
+        try {
+          const err = await response.json();
+          details = typeof err === 'string' ? err : JSON.stringify(err);
+        } catch {
+          // ignore
+        }
+        throw new Error(`Open-Meteo failed: ${response.status}${details ? ` - ${details}` : ''}`);
+      }
+
+      const json = await response.json();
+      const time: string[] = json.hourly?.time || [];
+      const usAqi: Array<number | null> = json.hourly?.us_aqi || [];
+      const pm25: Array<number | null> = json.hourly?.pm2_5 || [];
+      const pm10: Array<number | null> = json.hourly?.pm10 || [];
+      const o3: Array<number | null> = json.hourly?.ozone || [];
+      const no2: Array<number | null> = json.hourly?.nitrogen_dioxide || [];
+      const so2: Array<number | null> = json.hourly?.sulphur_dioxide || [];
+      const co: Array<number | null> = json.hourly?.carbon_monoxide || [];
+
+      for (let i = 0; i < time.length; i++) {
+        const date = time[i].split('T')[0];
+        if (!allDaily.has(date)) {
+          allDaily.set(date, { aqi: [], pm25: [], pm10: [], o3: [], no2: [], so2: [], co: [] });
+        }
+        const day = allDaily.get(date)!;
+
+        const pushIf = (arr: number[], v: number | null | undefined) => {
+          if (v === null || v === undefined) return;
+          if (!Number.isFinite(v)) return;
+          arr.push(v);
+        };
+
+        pushIf(day.aqi, usAqi[i]);
+        pushIf(day.pm25, pm25[i]);
+        pushIf(day.pm10, pm10[i]);
+        pushIf(day.o3, o3[i]);
+        pushIf(day.no2, no2[i]);
+        pushIf(day.so2, so2[i]);
+        pushIf(day.co, co[i]);
+      }
+
+      // Next chunk starts the day after chunkEnd
+      chunkStart = new Date(chunkEnd);
+      chunkStart.setDate(chunkStart.getDate() + 1);
     }
 
-    const data = await response.json();
-    const aodData = data.properties?.parameter?.AOD_550;
+    const startStr = fmt(overallStart);
+    const endStr = fmt(endDate);
 
-    if (!aodData) {
-      console.log('❌ No NASA AOD data available');
-      return [];
-    }
+    const historical: HistoricalDataPoint[] = Array.from(allDaily.entries())
+      .filter(([date]) => date >= startStr && date <= endStr)
+      .map(([date, v]) => {
+        const avgAqi = avg(v.aqi);
+        const avgPm25 = avg(v.pm25);
+        const aqi = avgAqi > 0 ? Math.round(avgAqi) : estimateAQIFromPM25(avgPm25);
 
-    const historicalData: HistoricalDataPoint[] = [];
+        return {
+          timestamp: new Date(date).getTime(),
+          date,
+          aqi,
+          pm25: Math.round(avgPm25 * 10) / 10,
+          pm10: Math.round(avg(v.pm10) * 10) / 10,
+          o3: Math.round(avg(v.o3) * 10) / 10,
+          no2: Math.round(avg(v.no2) * 10) / 10,
+          so2: Math.round(avg(v.so2) * 10) / 10,
+          co: Math.round(avg(v.co) * 10) / 10,
+          source: 'openmeteo' as const,
+          confidence: 0.55
+        };
+      })
+      .sort((a, b) => a.timestamp - b.timestamp);
 
-    Object.entries(aodData).forEach(([dateStr, aodValue]) => {
-      const aod = aodValue as number;
-      
-      // Skip invalid values (-999 = no data)
-      if (aod < 0) return;
-
-      // Convert AOD to approximate AQI (empirical formula)
-      // AOD 0.0-0.1 = Good (0-50)
-      // AOD 0.1-0.3 = Moderate (51-100)
-      // AOD 0.3-0.5 = Unhealthy for Sensitive (101-150)
-      // AOD > 0.5 = Unhealthy+ (150+)
-      const aqi = Math.min(500, Math.round(aod * 300));
-
-      // Parse date YYYYMMDD to ISO
-      const year = dateStr.substring(0, 4);
-      const month = dateStr.substring(4, 6);
-      const day = dateStr.substring(6, 8);
-      const isoDate = `${year}-${month}-${day}`;
-
-      historicalData.push({
-        timestamp: new Date(isoDate).getTime(),
-        date: isoDate,
-        aqi,
-        pm25: 0, // NASA doesn't provide individual pollutants
-        pm10: 0,
-        o3: 0,
-        no2: 0,
-        so2: 0,
-        co: 0,
-        source: 'nasa',
-        confidence: 0.6 // Lower confidence than ground stations
-      });
-    });
-
-    console.log(`✅ Collected ${historicalData.length} days of NASA data`);
-    return historicalData.sort((a, b) => a.timestamp - b.timestamp);
-
+    console.log(`✅ Collected ${historical.length} days of Open-Meteo model data`);
+    return historical;
   } catch (error) {
-    console.error('❌ NASA history fetch failed:', error);
+    console.error('❌ Open-Meteo history fetch failed:', error);
     return [];
   }
 };
@@ -350,16 +396,16 @@ export const collectHistoricalData = async (
   console.log(`📍 Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
 
   // Fetch from multiple sources in parallel
-  const [openaqData, nasaData] = await Promise.all([
+  const [openaqData, openMeteoData] = await Promise.all([
     fetchOpenAQHistory(lat, lng, days),
-    fetchNASAHistory(lat, lng, days)
+    fetchOpenMeteoHistory(lat, lng, days)
   ]);
 
   // Merge data, preferring OpenAQ (higher confidence)
   const mergedMap = new Map<string, HistoricalDataPoint>();
   
-  // Add NASA data first (lower priority)
-  nasaData.forEach(point => {
+  // Add Open-Meteo model data first (lower priority than measurements)
+  openMeteoData.forEach(point => {
     mergedMap.set(point.date, point);
   });
 
@@ -375,7 +421,9 @@ export const collectHistoricalData = async (
 
   const startDate = completeData.length > 0 ? completeData[0].date : '';
   const endDate = completeData.length > 0 ? completeData[completeData.length - 1].date : '';
-  const completeness = (completeData.filter(d => d.source !== 'interpolated').length / days) * 100;
+  // "Completeness" is the percent of days backed by real measurements (OpenAQ).
+  // Model-based (Open-Meteo) and interpolated points do not count as measured.
+  const completeness = (completeData.filter(d => d.source === 'openaq').length / days) * 100;
 
   console.log(`✅ Dataset complete: ${completeData.length} days, ${completeness.toFixed(1)}% real data`);
 

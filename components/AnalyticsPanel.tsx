@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { LocationData } from '../types';
 import { collectHistoricalData, getCachedHistoricalData } from '../services/dataCollectionService';
+import type { HistoricalDataPoint } from '../services/dataCollectionService';
+import { searchLocation } from '../services/geocodingService';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  ComposedChart,
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
+} from 'recharts';
 import {
   analyzeMonthlyTrends,
   analyzeYearlyTrends,
@@ -18,10 +37,33 @@ interface AnalyticsPanelProps {
   onClose: () => void;
 }
 
+interface ComparedLocation {
+  id: string;
+  city: string;
+  country: string;
+  lat: number;
+  lng: number;
+  data: HistoricalDataPoint[];
+  completeness: number;
+}
+
 const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'yearly' | 'pollutants'>('weekly');
+
+  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
+  const [dataCompleteness, setDataCompleteness] = useState<number>(0);
+  const [chartMetric, setChartMetric] = useState<'aqi' | 'pm25' | 'pm10'>('aqi');
+  const [chartType, setChartType] = useState<'line' | 'area' | 'bar' | 'composed' | 'scatter'>('line');
+  const [chartDays, setChartDays] = useState<30 | 90 | 365>(90);
+  const [compareQuery, setCompareQuery] = useState('');
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [compareLocations, setCompareLocations] = useState<ComparedLocation[]>([]);
+  const [compareSourceMode, setCompareSourceMode] = useState<'merged' | 'measured-only'>('merged');
+  const [normalizeCompare, setNormalizeCompare] = useState(false);
+  const [showExtendedBreakdown, setShowExtendedBreakdown] = useState(false);
   
   const [weeklyData, setWeeklyData] = useState<WeeklyAnalysis[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyAnalysis[]>([]);
@@ -87,6 +129,9 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
       }
       
       console.log(`✅ Loaded ${dataset.data.length} days of historical data (${dataset.completeness}% real, ${100 - dataset.completeness}% interpolated)`);
+
+      setHistoricalData(dataset.data);
+      setDataCompleteness(dataset.completeness);
       
       // Show warning if completeness is low
       if (dataset.completeness < 30) {
@@ -135,6 +180,207 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const metricLabel = (metric: 'aqi' | 'pm25' | 'pm10') => {
+    if (metric === 'pm25') return 'PM2.5 (µg/m³)';
+    if (metric === 'pm10') return 'PM10 (µg/m³)';
+    return 'AQI';
+  };
+
+  const metricColorClass = (metric: 'aqi' | 'pm25' | 'pm10') => {
+    if (metric === 'pm25') return 'text-emerald-300';
+    if (metric === 'pm10') return 'text-blue-300';
+    return 'text-cyan-300';
+  };
+
+  const chartValue = (p: HistoricalDataPoint) => {
+    if (chartMetric === 'aqi') return p.aqi;
+    if (chartMetric === 'pm25') return p.pm25 > 0 ? p.pm25 : null;
+    return p.pm10 > 0 ? p.pm10 : null;
+  };
+
+  const chartData = historicalData
+    .slice(-chartDays)
+    .map((p) => ({
+      timestamp: p.timestamp,
+      date: p.date,
+      value: chartValue(p),
+      source: p.source,
+      confidence: p.confidence
+    }));
+
+  const comparePalette = ['#34d399', '#60a5fa', '#f59e0b'];
+
+  const toMetricValue = (metric: 'aqi' | 'pm25' | 'pm10', p: HistoricalDataPoint) => {
+    if (metric === 'aqi') return p.aqi;
+    if (metric === 'pm25') return p.pm25 > 0 ? p.pm25 : null;
+    return p.pm10 > 0 ? p.pm10 : null;
+  };
+
+  const applyCompareSourceMode = (points: HistoricalDataPoint[]) => {
+    if (compareSourceMode === 'measured-only') {
+      return points.filter((p) => p.source === 'openaq');
+    }
+    return points;
+  };
+
+  const normalizeSeries = (series: Array<{ date: string; value: number | null }>) => {
+    if (!normalizeCompare) return series;
+
+    const base = series.find((point) => point.value !== null && point.value > 0)?.value ?? null;
+    if (!base) return series;
+
+    return series.map((point) => ({
+      ...point,
+      value: point.value === null ? null : Math.round((point.value / base) * 1000) / 10
+    }));
+  };
+
+  const buildCompareSeries = (points: HistoricalDataPoint[]) => {
+    const selected = applyCompareSourceMode(points)
+      .slice(-chartDays)
+      .map((p) => ({ date: p.date, value: toMetricValue(chartMetric, p) }));
+
+    return normalizeSeries(selected);
+  };
+
+  const compareChartData = (() => {
+    const merged = new Map<string, Record<string, string | number | null>>();
+
+    const pushPoint = (date: string, key: string, value: number | null) => {
+      if (!merged.has(date)) {
+        merged.set(date, { date });
+      }
+      merged.get(date)![key] = value;
+    };
+
+    buildCompareSeries(historicalData).forEach((p) => {
+      pushPoint(p.date, 'primary', p.value);
+    });
+
+    compareLocations.forEach((loc) => {
+      buildCompareSeries(loc.data).forEach((p) => {
+        pushPoint(p.date, loc.id, p.value);
+      });
+    });
+
+    return Array.from(merged.values()).sort((a, b) => {
+      const da = String(a.date);
+      const db = String(b.date);
+      return da.localeCompare(db);
+    });
+  })();
+
+  const compareMetricLabel = normalizeCompare ? 'Index (base=100)' : metricLabel(chartMetric);
+
+  const pollutantBreakdownData = historicalData
+    .slice(-chartDays)
+    .map((p) => ({
+      date: p.date,
+      pm25: p.pm25 > 0 ? p.pm25 : 0,
+      pm10: p.pm10 > 0 ? p.pm10 : 0,
+      o3: p.o3 > 0 ? p.o3 : 0,
+      no2: p.no2 > 0 ? p.no2 : 0
+    }));
+
+  const removeComparedLocation = (id: string) => {
+    setCompareLocations((prev) => prev.filter((loc) => loc.id !== id));
+  };
+
+  const addComparedLocation = async () => {
+    const query = compareQuery.trim();
+    if (!query || compareLoading) return;
+
+    if (compareLocations.length >= 3) {
+      setCompareError('You can compare up to 3 additional locations.');
+      return;
+    }
+
+    setCompareError(null);
+    setCompareLoading(true);
+
+    try {
+      const found = await searchLocation(query);
+
+      const isCurrent =
+        Math.abs(found.lat - data.lat) < 0.02 && Math.abs(found.lng - data.lng) < 0.02;
+      if (isCurrent) {
+        throw new Error('This is the current location already shown on the chart.');
+      }
+
+      const duplicate = compareLocations.some(
+        (loc) => Math.abs(loc.lat - found.lat) < 0.02 && Math.abs(loc.lng - found.lng) < 0.02
+      );
+
+      if (duplicate) {
+        throw new Error('Location already added to compare mode.');
+      }
+
+      let dataset = getCachedHistoricalData(found.lat, found.lng);
+      if (!dataset || dataset.data.length < 7) {
+        dataset = await collectHistoricalData(found.lat, found.lng, 365, found.city, found.country);
+      }
+
+      if (!dataset || dataset.data.length < 7) {
+        throw new Error(`Not enough history for ${found.city}.`);
+      }
+
+      const id = `cmp_${Date.now()}_${Math.round(found.lat * 1000)}_${Math.round(found.lng * 1000)}`;
+      setCompareLocations((prev) => [
+        ...prev,
+        {
+          id,
+          city: found.city,
+          country: found.country,
+          lat: found.lat,
+          lng: found.lng,
+          data: dataset.data,
+          completeness: dataset.completeness
+        }
+      ]);
+      setCompareQuery('');
+    } catch (err) {
+      setCompareError(err instanceof Error ? err.message : 'Could not add compared location.');
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
+  const ChartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const item = payload[0]?.payload;
+    const value = payload[0]?.value;
+    const displayLabel = item?.date ?? label;
+    return (
+      <div className="rounded-lg border border-gray-700 bg-slate-900/95 backdrop-blur px-3 py-2 shadow-xl">
+        <p className="text-xs text-gray-300 font-semibold">{displayLabel}</p>
+        <p className="text-sm text-white">
+          <span className="text-gray-400 mr-2">{metricLabel(chartMetric)}:</span>
+          <span className="font-bold">{value ?? 'N/A'}</span>
+        </p>
+        {item?.source && (
+          <p className="text-xs text-gray-400 mt-1">
+            Source: <span className="capitalize text-gray-300">{item.source}</span> • Confidence: <span className="text-gray-300">{Math.round((item.confidence ?? 0) * 100)}%</span>
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const CompareTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+    return (
+      <div className="rounded-lg border border-gray-700 bg-slate-900/95 backdrop-blur px-3 py-2 shadow-xl">
+        <p className="text-xs text-gray-300 font-semibold">{label}</p>
+        <p className="text-xs text-gray-400 mb-1">{compareMetricLabel}</p>
+        {payload.map((entry: any) => (
+          <p key={entry.dataKey} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: <span className="font-semibold">{entry.value ?? 'N/A'}</span>
+          </p>
+        ))}
+      </div>
+    );
   };
 
   const getTrendIcon = (trend: 'improving' | 'stable' | 'worsening' | 'up' | 'down') => {
@@ -213,6 +459,304 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
           </div>
         ) : (
           <>
+            <div className="mb-6 bg-slate-800/30 rounded-lg p-4 border border-cyan-500/20">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">History chart</h3>
+                  <p className="text-xs text-gray-400">
+                    {chartDays} days • {metricLabel(chartMetric)} • {dataCompleteness}% real measurements
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={chartMetric}
+                    onChange={(e) => setChartMetric(e.target.value as any)}
+                    className="bg-slate-900/50 border border-gray-700 text-gray-200 text-sm rounded px-2 py-1"
+                    aria-label="Select chart metric"
+                  >
+                    <option value="aqi">AQI</option>
+                    <option value="pm25">PM2.5</option>
+                    <option value="pm10">PM10</option>
+                  </select>
+
+                  <select
+                    value={chartDays}
+                    onChange={(e) => setChartDays(parseInt(e.target.value, 10) as any)}
+                    className="bg-slate-900/50 border border-gray-700 text-gray-200 text-sm rounded px-2 py-1"
+                    aria-label="Select chart time range"
+                  >
+                    <option value={30}>30 days</option>
+                    <option value={90}>90 days</option>
+                    <option value={365}>365 days</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Chart type selector */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  onClick={() => setChartType('line')}
+                  className={`flex-1 py-2 px-3 rounded text-sm font-semibold transition-colors border ${
+                    chartType === 'line'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
+                      : 'bg-slate-900/40 text-gray-300 border-gray-700 hover:bg-slate-900/60'
+                  }`}
+                >
+                  Line
+                </button>
+                <button
+                  onClick={() => setChartType('area')}
+                  className={`flex-1 py-2 px-3 rounded text-sm font-semibold transition-colors border ${
+                    chartType === 'area'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
+                      : 'bg-slate-900/40 text-gray-300 border-gray-700 hover:bg-slate-900/60'
+                  }`}
+                >
+                  Area
+                </button>
+                <button
+                  onClick={() => setChartType('bar')}
+                  className={`flex-1 py-2 px-3 rounded text-sm font-semibold transition-colors border ${
+                    chartType === 'bar'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
+                      : 'bg-slate-900/40 text-gray-300 border-gray-700 hover:bg-slate-900/60'
+                  }`}
+                >
+                  Bar
+                </button>
+                <button
+                  onClick={() => setChartType('composed')}
+                  className={`flex-1 py-2 px-3 rounded text-sm font-semibold transition-colors border ${
+                    chartType === 'composed'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
+                      : 'bg-slate-900/40 text-gray-300 border-gray-700 hover:bg-slate-900/60'
+                  }`}
+                >
+                  Composed
+                </button>
+                <button
+                  onClick={() => setChartType('scatter')}
+                  className={`flex-1 py-2 px-3 rounded text-sm font-semibold transition-colors border ${
+                    chartType === 'scatter'
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30'
+                      : 'bg-slate-900/40 text-gray-300 border-gray-700 hover:bg-slate-900/60'
+                  }`}
+                >
+                  Scatter
+                </button>
+              </div>
+
+              {/* Chart */}
+              {chartData.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">No historical points available.</div>
+              ) : (
+                <div className={`w-full h-[260px] ${metricColorClass(chartMetric)}`}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    {chartType === 'line' ? (
+                      <LineChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: 'currentColor' }} tickMargin={8} minTickGap={24} />
+                        <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Line type="monotone" dataKey="value" stroke="currentColor" strokeWidth={2} dot={false} connectNulls />
+                      </LineChart>
+                    ) : chartType === 'area' ? (
+                      <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: 'currentColor' }} tickMargin={8} minTickGap={24} />
+                        <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Area type="monotone" dataKey="value" stroke="currentColor" fill="currentColor" fillOpacity={0.18} strokeWidth={2} connectNulls />
+                      </AreaChart>
+                    ) : chartType === 'bar' ? (
+                      <BarChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: 'currentColor' }} tickMargin={8} minTickGap={24} />
+                        <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="value" fill="currentColor" fillOpacity={0.7} />
+                      </BarChart>
+                    ) : chartType === 'composed' ? (
+                      <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: 'currentColor' }} tickMargin={8} minTickGap={24} />
+                        <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Bar dataKey="value" fill="currentColor" fillOpacity={0.25} />
+                        <Line type="monotone" dataKey="value" stroke="currentColor" strokeWidth={2} dot={false} connectNulls />
+                      </ComposedChart>
+                    ) : (
+                      <ScatterChart margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                        <XAxis
+                          dataKey="timestamp"
+                          type="number"
+                          domain={['dataMin', 'dataMax']}
+                          tick={{ fill: 'currentColor' }}
+                          tickMargin={8}
+                          minTickGap={24}
+                          tickFormatter={(v) => {
+                            const d = new Date(Number(v));
+                            return Number.isFinite(d.getTime()) ? d.toISOString().slice(5, 10) : '';
+                          }}
+                        />
+                        <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Scatter data={chartData} fill="currentColor" fillOpacity={0.7} />
+                      </ScatterChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              <p className="mt-2 text-xs text-gray-500">
+                Values are daily averages. Gaps can occur when sources don’t report PM values.
+              </p>
+            </div>
+
+            {/* Compare Mode */}
+            <div className="mb-6 bg-slate-800/30 rounded-lg p-4 border border-emerald-500/20">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Compare mode</h3>
+                  <p className="text-xs text-gray-400">
+                    Overlay {compareMetricLabel} for {chartDays} days across locations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mb-3">
+                <label className="text-xs text-gray-300 flex items-center gap-2">
+                  Source mode
+                  <select
+                    value={compareSourceMode}
+                    onChange={(e) => setCompareSourceMode(e.target.value as 'merged' | 'measured-only')}
+                    className="bg-slate-900/50 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1"
+                  >
+                    <option value="merged">Merged (all sources)</option>
+                    <option value="measured-only">Measured only (OpenAQ)</option>
+                  </select>
+                </label>
+
+                <label className="text-xs text-gray-300 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={normalizeCompare}
+                    onChange={(e) => setNormalizeCompare(e.target.checked)}
+                  />
+                  Normalize to index 100
+                </label>
+              </div>
+
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={compareQuery}
+                  onChange={(e) => setCompareQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addComparedLocation();
+                    }
+                  }}
+                  placeholder="Add city to compare (e.g. Delhi, Tokyo)"
+                  className="flex-1 bg-slate-900/50 border border-gray-700 text-gray-200 text-sm rounded px-3 py-2"
+                />
+                <button
+                  onClick={addComparedLocation}
+                  disabled={compareLoading || compareLocations.length >= 3}
+                  className="px-3 py-2 rounded text-sm font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 disabled:opacity-50"
+                >
+                  {compareLoading ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+
+              {compareError && <p className="text-xs text-red-300 mb-2">{compareError}</p>}
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                <span className="px-2 py-1 rounded text-xs border border-cyan-500/30 text-cyan-300 bg-cyan-500/10">
+                  {data.city}, {data.country} (current)
+                </span>
+                {compareLocations.map((loc, idx) => (
+                  <button
+                    key={loc.id}
+                    onClick={() => removeComparedLocation(loc.id)}
+                    className="px-2 py-1 rounded text-xs border bg-slate-900/40 text-gray-200"
+                    style={{ borderColor: comparePalette[idx % comparePalette.length] }}
+                    title="Remove location"
+                  >
+                    {loc.city}, {loc.country || 'Unknown'} • {loc.completeness}% real ✕
+                  </button>
+                ))}
+              </div>
+
+              <div className="w-full h-[260px] text-emerald-300">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={compareChartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: 'currentColor' }} tickMargin={8} minTickGap={24} />
+                    <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                    <Tooltip content={<CompareTooltip />} />
+                    <Legend />
+                    <Line type="monotone" dataKey="primary" name={`${data.city} (current)`} stroke="#22d3ee" strokeWidth={2.5} dot={false} connectNulls />
+                    {compareLocations.map((loc, idx) => (
+                      <Line
+                        key={loc.id}
+                        type="monotone"
+                        dataKey={loc.id}
+                        name={`${loc.city}${loc.country ? `, ${loc.country}` : ''}`}
+                        stroke={comparePalette[idx % comparePalette.length]}
+                        strokeWidth={2}
+                        dot={false}
+                        connectNulls
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Pollutant Breakdown */}
+            <div className="mb-6 bg-slate-800/30 rounded-lg p-4 border border-blue-500/20">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Pollutant breakdown</h3>
+                  <p className="text-xs text-gray-400">
+                    Stacked daily contribution for PM2.5 and PM10.
+                  </p>
+                </div>
+                <label className="text-xs text-gray-300 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={showExtendedBreakdown}
+                    onChange={(e) => setShowExtendedBreakdown(e.target.checked)}
+                  />
+                  Include O₃ / NO₂
+                </label>
+              </div>
+
+              <div className="w-full h-[260px] text-blue-300">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={pollutantBreakdownData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="currentColor" strokeOpacity={0.08} vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: 'currentColor' }} tickMargin={8} minTickGap={24} />
+                    <YAxis tick={{ fill: 'currentColor' }} width={40} />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="pm25" stackId="pollutants" stroke="#34d399" fill="#34d399" fillOpacity={0.35} name="PM2.5" />
+                    <Area type="monotone" dataKey="pm10" stackId="pollutants" stroke="#60a5fa" fill="#60a5fa" fillOpacity={0.35} name="PM10" />
+                    {showExtendedBreakdown && (
+                      <Area type="monotone" dataKey="o3" stackId="pollutants" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} name="O3" />
+                    )}
+                    {showExtendedBreakdown && (
+                      <Area type="monotone" dataKey="no2" stackId="pollutants" stroke="#f472b6" fill="#f472b6" fillOpacity={0.3} name="NO2" />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             {/* Data Quality Notice */}
             {monthlyData.length > 0 && (
               <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-200">

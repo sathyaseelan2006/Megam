@@ -89,7 +89,8 @@ export const getGroundStationData = async (
             throw new Error('OpenAQ API rate limit exceeded for measurements. Please wait and try again.');
           }
           if (measurementsResponse.status === 404) {
-            throw new Error('No measurements found for this station.');
+            // Some stations exist but have no "latest" payload; treat as a normal no-data case.
+            return null;
           }
           if (!measurementsResponse.ok) {
             throw new Error(`OpenAQ measurements error: ${measurementsResponse.statusText}`);
@@ -113,7 +114,7 @@ export const getGroundStationData = async (
           measurementCache[station.id] = result;
           return result;
         } catch (error) {
-          console.error(`Error fetching measurements for station ${station.id}:`, error);
+          console.warn(`Skipping station ${station.id} (measurements unavailable):`, error);
           return null;
         }
       })

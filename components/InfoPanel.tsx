@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AQI_LEVELS } from '../constants';
 import { LocationData, AQILevel } from '../types';
 import { CloseIcon, InfoIcon, ShieldCheckIcon, ShareIcon } from './icons';
+import { POLLUTANT_ENCYCLOPEDIA } from '../educationalContent';
 
 interface InfoPanelProps {
   data: LocationData | null;
@@ -9,16 +10,90 @@ interface InfoPanelProps {
   loading: boolean;
 }
 
+type OutdoorActivityLevel = 'low' | 'moderate' | 'high';
+
+const getPollutantKey = (name: string): string | null => {
+  const normalized = name.trim().toUpperCase();
+  if (normalized === 'PM2.5' || normalized === 'PM25') return 'PM2.5';
+  if (normalized === 'PM10') return 'PM10';
+  if (normalized === 'O3' || normalized === 'O₃' || normalized.includes('OZONE')) return 'O3';
+  if (normalized === 'NO2' || normalized === 'NO₂' || normalized.includes('NITROGEN')) return 'NO2';
+  if (normalized === 'SO2' || normalized === 'SO₂' || normalized.includes('SULFUR')) return 'SO2';
+  if (normalized === 'CO' || normalized.includes('CARBON MONOXIDE')) return 'CO';
+  return null;
+};
+
+const getDynamicRecommendations = (
+  data: LocationData,
+  hasAsthma: boolean,
+  outdoorLevel: OutdoorActivityLevel
+): string[] => {
+  const recs: string[] = [];
+  const aqi = data.aqi;
+
+  if (aqi <= 50) {
+    recs.push('Air quality is good today. Most people can continue normal outdoor activities.');
+  } else if (aqi <= 100) {
+    recs.push('Air quality is moderate. Sensitive individuals should watch for mild respiratory symptoms.');
+  } else if (aqi <= 150) {
+    recs.push('Unhealthy for sensitive groups. Reduce prolonged outdoor exertion, especially near traffic.');
+  } else if (aqi <= 200) {
+    recs.push('Unhealthy air conditions. Limit time outdoors and keep indoor air as clean as possible.');
+  } else if (aqi <= 300) {
+    recs.push('Very unhealthy air. Avoid outdoor exercise and keep windows closed when possible.');
+  } else {
+    recs.push('Hazardous air quality. Stay indoors, use masks/air filtration, and avoid outdoor exposure.');
+  }
+
+  if (hasAsthma) {
+    if (aqi > 100) {
+      recs.push('Asthma profile: carry rescue medication, follow your action plan, and avoid outdoor triggers.');
+    } else {
+      recs.push('Asthma profile: monitor symptoms and consider preventive inhaler use before going outside.');
+    }
+  }
+
+  if (outdoorLevel === 'high') {
+    if (aqi > 100) {
+      recs.push('High outdoor activity: move workouts indoors today or shorten intensity and duration outside.');
+    } else {
+      recs.push('High outdoor activity: prefer early morning routes away from high-traffic roads.');
+    }
+  }
+
+  if (outdoorLevel === 'moderate' && aqi > 150) {
+    recs.push('Moderate outdoor activity: keep outdoor sessions brief and take more indoor breaks.');
+  }
+
+  const topPollutant = [...(data.pollutants || [])]
+    .sort((a, b) => b.concentration - a.concentration)[0];
+
+  if (topPollutant) {
+    const key = getPollutantKey(topPollutant.name);
+    if (key && POLLUTANT_ENCYCLOPEDIA[key]) {
+      const p = POLLUTANT_ENCYCLOPEDIA[key];
+      const impact = p.healthImpacts.shortTerm[0];
+      recs.push(`Dominant pollutant is ${p.symbol} (${p.name}). Common short-term impact: ${impact}.`);
+      recs.push(`Source awareness: ${p.sources[0]}.`);
+    }
+  }
+
+  return recs.slice(0, 6);
+};
+
 const getAqiLevel = (aqi: number): AQILevel | undefined => {
   return AQI_LEVELS.find(level => aqi >= level.range[0] && aqi <= level.range[1]);
 };
 
 const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
   const [showShareToast, setShowShareToast] = useState(false);
+  const [hasAsthma, setHasAsthma] = useState(false);
+  const [outdoorLevel, setOutdoorLevel] = useState<OutdoorActivityLevel>('moderate');
   
   if (!data && !loading) return null;
 
   const aqiLevel = data ? getAqiLevel(data.aqi) : undefined;
+  const dynamicRecommendations = data ? getDynamicRecommendations(data, hasAsthma, outdoorLevel) : [];
 
   const handleShare = async () => {
     if (!data) return;
@@ -332,6 +407,40 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
                 </ul>
             </div>
           )}
+
+          <div className="mb-4 bg-gray-900/40 border border-cyan-500/20 rounded-lg p-3">
+            <h4 className="text-lg font-semibold mb-2 border-b border-gray-700 pb-1">Personalized Health Recommendations</h4>
+
+            <div className="grid grid-cols-1 gap-2 mb-3">
+              <label className="text-sm text-gray-300 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={hasAsthma}
+                  onChange={(e) => setHasAsthma(e.target.checked)}
+                />
+                I have asthma or high respiratory sensitivity
+              </label>
+
+              <label className="text-sm text-gray-300 flex items-center gap-2">
+                Outdoor activity:
+                <select
+                  value={outdoorLevel}
+                  onChange={(e) => setOutdoorLevel(e.target.value as OutdoorActivityLevel)}
+                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm"
+                >
+                  <option value="low">Low</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+            </div>
+
+            <ul className="space-y-2 text-sm list-disc list-inside text-gray-300 pl-2">
+              {dynamicRecommendations.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </div>
 
           <div>
             <h4 className="text-lg font-semibold mb-2 border-b border-gray-700 pb-1">Primary Pollutants</h4>

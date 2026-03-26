@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { POLLUTANT_ENCYCLOPEDIA, AIR_QUALITY_FACTS } from '../educationalContent';
+import {
+  POLLUTANT_ENCYCLOPEDIA,
+  AIR_QUALITY_FACTS,
+  SCIENCE_RESEARCH_RESOURCES,
+  SCIENCE_NEWS_SOURCES,
+  ScienceResource
+} from '../educationalContent';
 import { CloseIcon, BookOpenIcon } from './icons';
 
 interface EducationPanelProps {
@@ -8,12 +14,31 @@ interface EducationPanelProps {
 }
 
 const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClose }) => {
+  const [activeView, setActiveView] = useState<'encyclopedia' | 'science'>('encyclopedia');
   const [selectedPollutant, setSelectedPollutant] = useState(pollutantSymbol || 'PM2.5');
-  const pollutant = POLLUTANT_ENCYCLOPEDIA[selectedPollutant];
-
-  if (!pollutant) return null;
+  const [scienceQuery, setScienceQuery] = useState('');
+  const [scienceTopic, setScienceTopic] = useState<'all' | ScienceResource['topic']>('all');
+  const pollutant = POLLUTANT_ENCYCLOPEDIA[selectedPollutant] || POLLUTANT_ENCYCLOPEDIA['PM2.5'];
 
   const pollutantKeys = Object.keys(POLLUTANT_ENCYCLOPEDIA);
+
+  const topicLabel = (topic: ScienceResource['topic']) => {
+    if (topic === 'air-pollution') return 'Air Pollution';
+    if (topic === 'climate-change') return 'Climate Change';
+    if (topic === 'global-warming') return 'Global Warming';
+    return 'Weather & Atmosphere';
+  };
+
+  const resourceMatches = (resource: ScienceResource) => {
+    const q = scienceQuery.trim().toLowerCase();
+    const text = `${resource.title} ${resource.source} ${resource.summary}`.toLowerCase();
+    const topicOk = scienceTopic === 'all' || resource.topic === scienceTopic;
+    const queryOk = !q || text.includes(q);
+    return topicOk && queryOk;
+  };
+
+  const filteredResearch = SCIENCE_RESEARCH_RESOURCES.filter(resourceMatches);
+  const filteredNews = SCIENCE_NEWS_SOURCES.filter(resourceMatches);
 
   return (
     <div className="absolute top-4 left-4 z-10 w-full max-w-2xl mx-4 sm:mx-0 bg-gray-800/95 text-white rounded-lg backdrop-blur-md border border-cyan-500/50 shadow-2xl animate-fadeIn max-h-[calc(100vh-32px)] flex flex-col">
@@ -21,7 +46,9 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
       <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center">
           <BookOpenIcon className="w-6 h-6 mr-2 text-cyan-400" />
-          <h2 className="text-xl font-bold">Pollutant Encyclopedia</h2>
+          <h2 className="text-xl font-bold">
+            {activeView === 'encyclopedia' ? 'Pollutant Encyclopedia' : 'Science Hub'}
+          </h2>
         </div>
         <button 
           onClick={onClose} 
@@ -32,31 +59,89 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
         </button>
       </div>
 
-      {/* Pollutant Selector */}
-      <div className="p-4 border-b border-gray-700 overflow-x-auto flex-shrink-0">
-        <div className="flex space-x-2">
-          {pollutantKeys.map(key => {
-            const p = POLLUTANT_ENCYCLOPEDIA[key];
-            return (
-              <button
-                key={key}
-                onClick={() => setSelectedPollutant(key)}
-                className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap ${
-                  selectedPollutant === key
-                    ? 'bg-cyan-500 text-white'
-                    : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
-                }`}
-                style={{ borderColor: p.color }}
-              >
-                {p.icon} {p.symbol}
-              </button>
-            );
-          })}
-        </div>
+      {/* Top-level view switch */}
+      <div className="px-4 pt-4 pb-2 border-b border-gray-700 flex gap-2 flex-shrink-0">
+        <button
+          onClick={() => setActiveView('encyclopedia')}
+          className={`px-3 py-2 rounded text-sm font-semibold transition-colors ${
+            activeView === 'encyclopedia'
+              ? 'bg-cyan-500 text-white'
+              : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+          }`}
+        >
+          Encyclopedia
+        </button>
+        <button
+          onClick={() => setActiveView('science')}
+          className={`px-3 py-2 rounded text-sm font-semibold transition-colors ${
+            activeView === 'science'
+              ? 'bg-cyan-500 text-white'
+              : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+          }`}
+        >
+          Research + News
+        </button>
       </div>
+
+      {/* Pollutant Selector */}
+      {activeView === 'encyclopedia' && (
+        <div className="p-4 border-b border-gray-700 overflow-x-auto flex-shrink-0">
+          <div className="flex space-x-2">
+            {pollutantKeys.map(key => {
+              const p = POLLUTANT_ENCYCLOPEDIA[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedPollutant(key)}
+                  className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap ${
+                    selectedPollutant === key
+                      ? 'bg-cyan-500 text-white'
+                      : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+                  }`}
+                  style={{ borderColor: p.color }}
+                >
+                  {p.icon} {p.symbol}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Science controls */}
+      {activeView === 'science' && (
+        <div className="p-4 border-b border-gray-700 flex flex-col gap-2 flex-shrink-0">
+          <input
+            type="text"
+            value={scienceQuery}
+            onChange={(e) => setScienceQuery(e.target.value)}
+            placeholder="Search topics, journals, climate and atmospheric research..."
+            className="w-full bg-gray-900/60 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200"
+          />
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setScienceTopic('all')}
+              className={`px-3 py-1 rounded text-xs ${scienceTopic === 'all' ? 'bg-cyan-500 text-white' : 'bg-gray-700/60 text-gray-300'}`}
+            >
+              All
+            </button>
+            {(['air-pollution', 'climate-change', 'global-warming', 'weather-atmosphere'] as const).map((topic) => (
+              <button
+                key={topic}
+                onClick={() => setScienceTopic(topic)}
+                className={`px-3 py-1 rounded text-xs ${scienceTopic === topic ? 'bg-cyan-500 text-white' : 'bg-gray-700/60 text-gray-300'}`}
+              >
+                {topicLabel(topic)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Content - Scrollable */}
       <div className="p-4 overflow-y-auto flex-1">
+        {activeView === 'encyclopedia' ? (
+          <>
         {/* Title */}
         <div className="mb-4">
           <div className="flex items-center mb-2">
@@ -151,6 +236,63 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
             ))}
           </div>
         </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-4 p-3 bg-cyan-900/20 border border-cyan-700/40 rounded-lg">
+              <p className="text-sm text-cyan-200">
+                Explore trusted scientific resources and news focused on air pollution, climate change, global warming,
+                earth weather, and atmospheric conditions.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-lg font-semibold mb-2 text-cyan-300">Research Explorer</h4>
+                <div className="space-y-3">
+                  {filteredResearch.length === 0 && (
+                    <p className="text-sm text-gray-400">No research resources match your filters.</p>
+                  )}
+                  {filteredResearch.map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-3 bg-gray-700/30 rounded-lg border border-gray-700 hover:border-cyan-500/40 transition-colors"
+                    >
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="text-xs text-cyan-300 mt-1">{item.source} • {topicLabel(item.topic)}</p>
+                      <p className="text-xs text-gray-300 mt-2 leading-relaxed">{item.summary}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold mb-2 text-green-300">News Column</h4>
+                <div className="space-y-3">
+                  {filteredNews.length === 0 && (
+                    <p className="text-sm text-gray-400">No news sources match your filters.</p>
+                  )}
+                  {filteredNews.map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-3 bg-gray-700/30 rounded-lg border border-gray-700 hover:border-green-500/40 transition-colors"
+                    >
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="text-xs text-green-300 mt-1">{item.source} • {topicLabel(item.topic)}</p>
+                      <p className="text-xs text-gray-300 mt-2 leading-relaxed">{item.summary}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

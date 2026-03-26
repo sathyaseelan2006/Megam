@@ -16,6 +16,14 @@ import { getComprehensiveAQIData } from './services/satelliteService';
 import { historyService } from './services/historyService';
 import { preloadTensorFlow } from './services/mlPreloader';
 
+interface DangerZonePoint {
+  lat: number;
+  lng: number;
+  place: string;
+  aqi: number;
+  reason: string;
+}
+
 // Utility: Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R = 6371; // Earth's radius in kilometers
@@ -39,6 +47,51 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [dangerZones, setDangerZones] = useState<DangerZonePoint[]>([]);
+  const [closedDangerNoticeId, setClosedDangerNoticeId] = useState<string | null>(null);
+
+  const getLikelyReason = useCallback((data: LocationData): string => {
+    const topPollutant = [...(data.pollutants || [])].sort((a, b) => b.concentration - a.concentration)[0];
+    if (topPollutant) {
+      return `High ${topPollutant.name} concentration`;
+    }
+    if (data.aqi >= 300) return 'Hazardous atmospheric conditions';
+    if (data.aqi >= 200) return 'Very unhealthy air mass';
+    if (data.aqi >= 150) return 'Unhealthy pollution episode';
+    return 'Elevated pollution levels';
+  }, []);
+
+  const refreshDangerZones = useCallback((currentData: LocationData | null) => {
+    const highHistory = historyService
+      .getHistory()
+      .filter((h) => h.aqi >= 120)
+      .slice(0, 8)
+      .map((h) => ({
+        lat: h.location.lat,
+        lng: h.location.lng,
+        place: `${h.location.city}, ${h.location.country}`,
+        aqi: h.aqi,
+        reason: h.aqi >= 200 ? 'Very unhealthy recorded event' : 'Unhealthy recorded event'
+      }));
+
+    const combined: DangerZonePoint[] = [...highHistory];
+
+    if (currentData && currentData.aqi >= 120) {
+      combined.unshift({
+        lat: currentData.lat,
+        lng: currentData.lng,
+        place: `${currentData.city}, ${currentData.country}`,
+        aqi: currentData.aqi,
+        reason: getLikelyReason(currentData)
+      });
+    }
+
+    const deduped = combined.filter((zone, index, arr) =>
+      arr.findIndex((z) => Math.abs(z.lat - zone.lat) < 0.05 && Math.abs(z.lng - zone.lng) < 0.05) === index
+    );
+
+    setDangerZones(deduped.slice(0, 10));
+  }, [getLikelyReason]);
 
   // Smart ML preloading: only load when user shows interest
   useEffect(() => {
@@ -51,6 +104,26 @@ function App() {
       });
     }
   }, [locationData, showForecast]);
+
+  useEffect(() => {
+    refreshDangerZones(locationData);
+  }, [locationData, refreshDangerZones]);
+
+  const topDangerZone = [...dangerZones].sort((a, b) => b.aqi - a.aqi)[0] || null;
+  const topDangerZoneId = topDangerZone
+    ? `${topDangerZone.lat.toFixed(2)}_${topDangerZone.lng.toFixed(2)}_${topDangerZone.aqi}`
+    : null;
+  const showDangerNotice = !!topDangerZone && topDangerZoneId !== closedDangerNoticeId;
+
+  useEffect(() => {
+    // Re-open the danger card automatically when a new top hotspot appears.
+    if (topDangerZoneId && topDangerZoneId !== closedDangerNoticeId) {
+      return;
+    }
+    if (!topDangerZoneId) {
+      setClosedDangerNoticeId(null);
+    }
+  }, [topDangerZoneId, closedDangerNoticeId]);
 
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
@@ -317,6 +390,7 @@ function App() {
       <GlobeComponent 
         globeRef={globeRef}
         locationData={locationData}
+        dangerZones={dangerZones}
         isSatelliteView={isSatelliteView}
         onGlobeClick={handleGlobeClick}
         onBackgroundClick={handlePanelClose}
@@ -355,8 +429,50 @@ function App() {
           />
         </div>
 
+        {topDangerZone && showDangerNotice && (
+          <div className="absolute top-24 right-4 z-30 pointer-events-auto w-[92%] max-w-sm md:max-w-md">
+            <div className="relative rounded-xl border border-red-400/40 bg-slate-900/80 backdrop-blur-md shadow-2xl overflow-hidden">
+              <div className="px-3 py-2 bg-gradient-to-r from-red-600/40 to-pink-600/30 border-b border-red-400/30 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold tracking-widest text-red-200">DANGER ZONE ALERT</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-red-100/90">Live hotspot</span>
+                  <button
+                    onClick={() => setClosedDangerNoticeId(topDangerZoneId)}
+                    className="w-6 h-6 rounded-full bg-black/30 hover:bg-black/50 text-red-100 text-sm leading-none"
+                    title="Close alert"
+                    aria-label="Close danger notification"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="px-3 py-3 space-y-1">
+                <p className="text-sm text-white font-semibold truncate">{topDangerZone.place}</p>
+                <p className="text-sm text-red-300">
+                  AQI <span className="font-bold text-red-200">{topDangerZone.aqi}</span>
+                </p>
+                <p className="text-xs text-gray-200/90">{topDangerZone.reason}</p>
+              </div>
+              <div className="absolute -bottom-2 right-8 w-4 h-4 bg-slate-900 border-r border-b border-red-400/40 rotate-45" />
+            </div>
+          </div>
+        )}
+
+        {topDangerZone && !showDangerNotice && (
+          <div className="absolute top-24 right-4 z-30 pointer-events-auto">
+            <button
+              onClick={() => setClosedDangerNoticeId(null)}
+              className="px-3 py-2 rounded-full text-xs font-semibold bg-red-600/40 border border-red-400/40 text-red-100 hover:bg-red-600/55"
+              title="Show danger notification"
+              aria-label="Show danger notification"
+            >
+              Show danger alert
+            </button>
+          </div>
+        )}
+
         {/* Action Buttons */}
-        <div className='absolute bottom-12 right-4 z-10 flex space-x-2 pointer-events-auto'>
+        <div className='absolute z-20 pointer-events-auto left-1/2 -translate-x-1/2 bottom-20 flex space-x-2 md:left-4 md:translate-x-0 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:flex-col md:space-x-0 md:space-y-2'>
           <button
             onClick={() => locationData && setShowAnalytics(!showAnalytics)}
             disabled={!locationData}

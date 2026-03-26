@@ -45,6 +45,37 @@ export default defineConfig(({ mode }) => {
               });
             },
           },
+
+          // Proxy NASA POWER API requests to avoid CORS in development
+          '/api/nasa': {
+            target: 'https://power.larc.nasa.gov',
+            changeOrigin: true,
+            secure: false,
+            rewrite: (path) => {
+              // Extract the URL from query parameter and use its path+query
+              try {
+                const url = new URL(`http://localhost:5174${path}`);
+                const targetUrl = url.searchParams.get('url');
+                if (targetUrl) {
+                  const parsed = new URL(targetUrl);
+                  const rewritten = parsed.pathname + parsed.search;
+                  console.log(`🔄 NASA proxy rewrite: ${path} -> ${rewritten}`);
+                  return rewritten;
+                }
+              } catch (error) {
+                console.error('❌ NASA proxy rewrite error:', error);
+              }
+              return path.replace(/^\/api\/nasa/, '');
+            },
+            configure: (proxy) => {
+              proxy.on('error', (err) => {
+                console.error('❌ NASA proxy error:', err);
+              });
+              proxy.on('proxyRes', (proxyRes, req) => {
+                console.log(`✅ NASA proxy response: ${proxyRes.statusCode} for ${req.url}`);
+              });
+            },
+          },
         },
       },
       plugins: [react()],

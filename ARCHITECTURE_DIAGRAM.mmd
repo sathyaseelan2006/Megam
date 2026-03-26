@@ -1,0 +1,95 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'Segoe UI'}}}%%
+graph TB
+    classDef frontend fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff;
+    classDef service fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff;
+    classDef external fill:#475569,stroke:#94a3b8,stroke-width:1px,stroke-dasharray: 5 5,color:#fff;
+    classDef storage fill:#334155,stroke:#f59e0b,stroke-width:2px,color:#fff;
+    classDef infra fill:#000000,stroke:#6366f1,stroke-width:2px,color:#fff;
+
+    subgraph UserDevice ["🖥️ Client (Browser / React 19)"]
+        direction TB
+        
+        subgraph UI ["User Interface Layer"]
+            App[App.tsx / Router]:::frontend
+            Globe[3D Globe Component\n(react-globe.gl)]:::frontend
+            Panels[UI Panels]:::frontend
+            
+            subgraph PanelComponents [Panels]
+                InfoP[Info Panel]:::frontend
+                ForecastP[Forecast Panel]:::frontend
+                AnalyticsP[Analytics Panel]:::frontend
+                HistoryP[History Panel]:::frontend
+            end
+        end
+
+        subgraph CoreLogic ["Service Layer (Business Logic)"]
+            SatService[satelliteService.ts\n(Data Aggregator)]:::service
+            MLService[mlModelService.ts\n(TensorFlow.js)]:::service
+            PredService[predictionService.ts\n(Orchestrator)]:::service
+            GeoService[geocodingService.ts]:::service
+            GenAIService[geminiService.ts]:::service
+        end
+
+        subgraph LocalData ["Client Storage"]
+            LStore[(LocalStorage\nSettings/History)]:::storage
+            IDB[(IndexedDB\nTrained TF.js Models)]:::storage
+        end
+    end
+
+    subgraph CloudInfra ["☁️ Cloud & Infrastructure"]
+        subgraph Vercel ["Vercel Edge Network"]
+            ProxyAPI[API Routes\n/api/openaq.ts]:::infra
+            StaticAssets[Static Assets\nHost]:::infra
+        end
+        
+        subgraph ExternalAPIs ["External Data Providers"]
+            IQAir[IQAir API\n(Primary Commercial)]:::external
+            OpenAQ[OpenAQ API\n(Govt Ground Stations)]:::external
+            NASA[NASA MODIS\n(Satellite Data)]:::external
+            WAQI[WAQI\n(aggregator Backup)]:::external
+            Nominatim[OSM Nominatim\n(Geocoding)]:::external
+            GoogleAI[Google Gemini 2.5\n(Generative AI)]:::external
+        end
+        
+        subgraph InactiveInfra ["Provisioned but Inactive"]
+            Supabase[(Supabase DB\nReviews/Comments)]:::storage
+        end
+    end
+
+    %% Wiring - UI to Logic
+    App --> Globe
+    App --> Panels
+    Globe --> SatService
+    InfoP --> SatService
+    InfoP --> GenAIService
+    ForecastP --> PredService
+    AnalyticsP --> MLService
+    
+    %% Wiring - Search Flow
+    App -- "Search City" --> GeoService
+    GeoService -- "Get Lat/Lng" --> Nominatim
+
+    %% Wiring - Data Fusion Logic (Waterfall)
+    SatService -- "1. Try" --> IQAir
+    SatService -- "2. Try" --> ProxyAPI
+    SatService -- "3. Fallback" --> NASA
+    SatService -- "4. Last Resort" --> WAQI
+    
+    ProxyAPI -- "Secure Request" --> OpenAQ
+
+    %% Wiring - ML Pipeline
+    PredService -- "Route Request" --> MLService
+    MLService -- "Fetch Training Data" --> SatService
+    MLService -- "Save Model" --> IDB
+    MLService -- "Load Model" --> IDB
+    
+    %% Wiring - AI
+    GenAIService -- "Generate Summary" --> GoogleAI
+    
+    %% Wiring - Storage
+    SatService -- "Cache Results" --> LStore
+    HistoryP -- "Read History" --> LStore
+
+    %% Supabase Connection
+    App -. "Future Config" .-> Supabase
+

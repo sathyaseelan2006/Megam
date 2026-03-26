@@ -415,3 +415,127 @@ export const PROTECTION_TIPS = {
     'Follow official emergency guidelines.'
   ]
 };
+
+export interface ScienceResource {
+  id: string;
+  title: string;
+  source: string;
+  summary: string;
+  topic: 'air-pollution' | 'climate-change' | 'global-warming' | 'weather-atmosphere';
+  type: 'research' | 'news';
+  url: string;
+}
+
+export const SCIENCE_RESEARCH_RESOURCES: ScienceResource[] = [
+  {
+    id: 'who-air-quality-guidelines',
+    title: 'WHO Global Air Quality Guidelines',
+    source: 'World Health Organization',
+    summary: 'Evidence-based guideline values for major pollutants and public health risk reduction.',
+    topic: 'air-pollution',
+    type: 'research',
+    url: 'https://www.who.int/publications/i/item/9789240034228'
+  },
+  {
+    id: 'ipcc-ar6-wg1',
+    title: 'IPCC AR6: The Physical Science Basis',
+    source: 'IPCC',
+    summary: 'Comprehensive scientific assessment of climate change drivers, impacts, and projected scenarios.',
+    topic: 'climate-change',
+    type: 'research',
+    url: 'https://www.ipcc.ch/report/ar6/wg1/'
+  },
+  {
+    id: 'state-of-global-air-2024',
+    title: 'State of Global Air Report',
+    source: 'Health Effects Institute',
+    summary: 'Annual analysis of global exposure trends, mortality burden, and major pollutant patterns.',
+    topic: 'air-pollution',
+    type: 'research',
+    url: 'https://www.stateofglobalair.org/'
+  },
+  {
+    id: 'wmo-state-of-climate',
+    title: 'State of the Global Climate',
+    source: 'WMO',
+    summary: 'Observed changes in temperature, greenhouse gases, extreme events, and atmospheric indicators.',
+    topic: 'weather-atmosphere',
+    type: 'research',
+    url: 'https://public.wmo.int/en/resources/library'
+  },
+  {
+    id: 'nasa-earth-observatory-atmosphere',
+    title: 'NASA Earth Observatory: Atmosphere',
+    source: 'NASA Earth Observatory',
+    summary: 'Satellite-based atmospheric research articles on aerosols, ozone, greenhouse gases, and weather systems.',
+    topic: 'weather-atmosphere',
+    type: 'research',
+    url: 'https://earthobservatory.nasa.gov/topic/atmosphere'
+  },
+  {
+    id: 'our-world-in-data-co2-and-ghg',
+    title: 'CO2 and Greenhouse Gas Emissions',
+    source: 'Our World in Data',
+    summary: 'Open data and visual analysis of long-term global warming and emissions trends.',
+    topic: 'global-warming',
+    type: 'research',
+    url: 'https://ourworldindata.org/co2-and-greenhouse-gas-emissions'
+  }
+];
+
+export const SCIENCE_NEWS_SOURCES: ScienceResource[] = [
+  {
+    id: 'nasa-climate-news',
+    title: 'NASA Climate News',
+    source: 'NASA Climate',
+    summary: 'Updates on climate research, atmospheric observations, and Earth system changes.',
+    topic: 'climate-change',
+    type: 'news',
+    url: 'https://climate.nasa.gov/news/'
+  },
+  {
+    id: 'noaa-climate-news',
+    title: 'NOAA Climate.gov News & Features',
+    source: 'NOAA Climate.gov',
+    summary: 'Science communication on weather, climate variability, and long-term atmospheric patterns.',
+    topic: 'weather-atmosphere',
+    type: 'news',
+    url: 'https://www.climate.gov/news-features'
+  },
+  {
+    id: 'copernicus-atmosphere',
+    title: 'Copernicus Atmosphere Monitoring News',
+    source: 'CAMS',
+    summary: 'Operational atmospheric monitoring updates on air quality episodes and pollutant transport.',
+    topic: 'air-pollution',
+    type: 'news',
+    url: 'https://atmosphere.copernicus.eu/news'
+  },
+  {
+    id: 'unep-air-pollution-stories',
+    title: 'UNEP Air Pollution Stories',
+    source: 'UN Environment Programme',
+    summary: 'Global policy and science stories linking air quality, health, and climate action.',
+    topic: 'air-pollution',
+    type: 'news',
+    url: 'https://www.unep.org/topics/air'
+  },
+  {
+    id: 'nature-climate-news',
+    title: 'Nature Climate Change News',
+    source: 'Nature',
+    summary: 'Editorially curated developments in climate science and global warming research.',
+    topic: 'global-warming',
+    type: 'news',
+    url: 'https://www.nature.com/nclimate/'
+  },
+  {
+    id: 'scientific-american-climate',
+    title: 'Scientific American Climate & Air Quality',
+    source: 'Scientific American',
+    summary: 'Accessible science journalism on atmospheric conditions, pollution, and climate risk.',
+    topic: 'climate-change',
+    type: 'news',
+    url: 'https://www.scientificamerican.com/climate/'
+  }
+];

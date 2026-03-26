@@ -113,16 +113,33 @@ const analyzeTrend = (historicalAQI: number[]): 'improving' | 'stable' | 'worsen
 };
 
 /**
- * Simulate historical data collection
- * In production, this would fetch from a database or API
+ * Collect historical AQI values for lightweight (non-ML) forecasting.
+ * Uses the same real data pipeline as analytics/ML (OpenAQ + NASA POWER), with caching.
  */
-const getHistoricalData = async (lat: number, lng: number, days: number = 30): Promise<number[]> => {
-  // TODO: Replace with actual API call to fetch historical data
-  console.log(`📊 Fetching ${days} days of historical data...`);
-  
-  // For now, return empty - we should NOT generate fake data
-  // Better to be honest with users that data isn't available
-  return [];
+const getHistoricalData = async (
+  lat: number,
+  lng: number,
+  days: number = 30,
+  city: string = 'Unknown',
+  country: string = 'Unknown'
+): Promise<number[]> => {
+  console.log(`📊 Collecting ${days} days of historical AQI...`);
+
+  let dataset = getCachedHistoricalData(lat, lng);
+
+  // If no cache, or cache is smaller than requested window, fetch a fresh dataset.
+  if (!dataset || dataset.data.length < Math.min(days, 7)) {
+    dataset = await collectHistoricalData(lat, lng, Math.max(days, 30), city, country);
+    cacheHistoricalData(dataset);
+  }
+
+  if (!dataset || dataset.data.length === 0) return [];
+
+  // Take the latest N days, keeping zeros out (zeros represent missing pollutant averages for some sources)
+  return dataset.data
+    .slice(-days)
+    .map(d => d.aqi)
+    .filter(aqi => Number.isFinite(aqi) && aqi > 0);
 };
 
 /**
@@ -342,7 +359,7 @@ const generateSimpleForecast = async (
   currentData: LocationData,
   days: number
 ): Promise<ForecastResult> => {
-  const historicalData = await getHistoricalData(lat, lng, 30);
+  const historicalData = await getHistoricalData(lat, lng, 30, currentData.city, currentData.country);
   
   // Be honest - if no real data, don't make up predictions
   if (historicalData.length === 0) {
@@ -378,10 +395,10 @@ const generateSimpleForecast = async (
     predictions,
     modelInfo: {
       algorithm: 'Pattern-Based Fallback (Simple Moving Average)',
-      trainedOn: `${historicalData.length} days of simulated data`,
+      trainedOn: `${historicalData.length} days of real historical data`,
       accuracy: 65,
       isRealML: false,
-      dataSource: 'Simulated historical patterns',
+      dataSource: 'OpenAQ + NASA POWER (fallback mode)',
       trainingDays: historicalData.length
     },
     needsTraining: true
