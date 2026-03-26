@@ -15,6 +15,7 @@ import { smartLocationSearch, reverseGeocode } from './services/geocodingService
 import { getComprehensiveAQIData } from './services/satelliteService';
 import { historyService } from './services/historyService';
 import { preloadTensorFlow } from './services/mlPreloader';
+import { GLOBAL_DANGER_ZONE_SEEDS } from './constants';
 
 interface DangerZonePoint {
   lat: number;
@@ -62,6 +63,16 @@ function App() {
   }, []);
 
   const refreshDangerZones = useCallback((currentData: LocationData | null) => {
+    const seededZones: DangerZonePoint[] = GLOBAL_DANGER_ZONE_SEEDS
+      .filter((seed) => seed.aqi >= 120)
+      .map((seed) => ({
+        lat: seed.lat,
+        lng: seed.lng,
+        place: seed.place,
+        aqi: seed.aqi,
+        reason: seed.reason
+      }));
+
     const highHistory = historyService
       .getHistory()
       .filter((h) => h.aqi >= 120)
@@ -74,7 +85,7 @@ function App() {
         reason: h.aqi >= 200 ? 'Very unhealthy recorded event' : 'Unhealthy recorded event'
       }));
 
-    const combined: DangerZonePoint[] = [...highHistory];
+    const combined: DangerZonePoint[] = [...seededZones, ...highHistory];
 
     if (currentData && currentData.aqi >= 120) {
       combined.unshift({
@@ -90,7 +101,8 @@ function App() {
       arr.findIndex((z) => Math.abs(z.lat - zone.lat) < 0.05 && Math.abs(z.lng - zone.lng) < 0.05) === index
     );
 
-    setDangerZones(deduped.slice(0, 10));
+    const prioritized = deduped.sort((a, b) => b.aqi - a.aqi);
+    setDangerZones(prioritized.slice(0, 14));
   }, [getLikelyReason]);
 
   // Smart ML preloading: only load when user shows interest
@@ -455,19 +467,6 @@ function App() {
               </div>
               <div className="absolute -bottom-2 right-8 w-4 h-4 bg-slate-900 border-r border-b border-red-400/40 rotate-45" />
             </div>
-          </div>
-        )}
-
-        {topDangerZone && !showDangerNotice && (
-          <div className="absolute top-24 right-4 z-30 pointer-events-auto">
-            <button
-              onClick={() => setClosedDangerNoticeId(null)}
-              className="px-3 py-2 rounded-full text-xs font-semibold bg-red-600/40 border border-red-400/40 text-red-100 hover:bg-red-600/55"
-              title="Show danger notification"
-              aria-label="Show danger notification"
-            >
-              Show danger alert
-            </button>
           </div>
         )}
 
