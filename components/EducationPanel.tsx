@@ -41,21 +41,27 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
   const filteredNews = SCIENCE_NEWS_SOURCES.filter(resourceMatches);
 
   return (
-    <div className="absolute top-4 left-4 z-10 w-full max-w-2xl mx-4 sm:mx-0 bg-gray-800/95 text-white rounded-lg backdrop-blur-md border border-cyan-500/50 shadow-2xl animate-fadeIn max-h-[calc(100vh-32px)] flex flex-col">
+    <div className="fixed left-20 md:left-24 top-4 bottom-4 z-40 w-[calc(100vw-6rem)] max-w-2xl bg-slate-950/90 text-white rounded-2xl backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] animate-fadeIn flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
-        <div className="flex items-center">
-          <BookOpenIcon className="w-6 h-6 mr-2 text-cyan-400" />
-          <h2 className="text-xl font-bold">
-            {activeView === 'encyclopedia' ? 'Pollutant Encyclopedia' : 'Science Hub'}
-          </h2>
+      <div className="p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900/60 border-b border-cyan-500/30 flex justify-between items-center flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+            <BookOpenIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold tracking-wider uppercase text-cyan-100 flex items-center gap-2">
+              {activeView === 'encyclopedia' ? 'Pollutant Encyclopedia' : 'Science Research Hub'}
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">HUD-EDU</span>
+            </h2>
+            <p className="text-xs text-cyan-400/70 font-mono">Atmospheric & Chemical Composition Database</p>
+          </div>
         </div>
         <button 
           onClick={onClose} 
-          className="p-1 rounded-full hover:bg-gray-700 transition-colors"
+          className="p-2 rounded-xl bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700/60 hover:border-red-500/40 transition-all duration-200"
           aria-label="Close education panel"
         >
-          <CloseIcon className="w-6 h-6" />
+          <CloseIcon className="w-5 h-5" />
         </button>
       </div>
 

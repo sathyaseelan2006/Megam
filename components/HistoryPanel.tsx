@@ -52,19 +52,27 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ onClose, onLocationSelect }
     : history;
 
   return (
-    <div className="absolute top-4 right-4 z-10 w-full max-w-md mx-4 sm:mx-0 bg-gray-800/95 text-white rounded-lg backdrop-blur-md border border-gray-600 shadow-2xl animate-fadeInRight max-h-[calc(100vh-32px)] flex flex-col">
+    <div className="fixed top-20 right-4 z-40 w-[calc(100vw-2rem)] sm:w-full max-w-md max-h-[calc(100vh-6rem)] bg-slate-950/90 text-white rounded-2xl backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] animate-fadeInRight flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-700 flex justify-between items-center flex-shrink-0">
-        <div className="flex items-center">
-          <HistoryIcon className="w-6 h-6 mr-2 text-cyan-400" />
-          <h2 className="text-xl font-bold">Search History</h2>
+      <div className="p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900/60 border-b border-cyan-500/30 flex justify-between items-center flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+            <HistoryIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold tracking-wider uppercase text-cyan-100 flex items-center gap-2">
+              Telemetry Log
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">HUD-HIST</span>
+            </h2>
+            <p className="text-xs text-cyan-400/70 font-mono">Temporal Observation Archive</p>
+          </div>
         </div>
         <button 
           onClick={onClose} 
-          className="p-1 rounded-full hover:bg-gray-700 transition-colors"
+          className="p-2 rounded-xl bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700/60 hover:border-red-500/40 transition-all duration-200"
           aria-label="Close history panel"
         >
-          <CloseIcon className="w-6 h-6" />
+          <CloseIcon className="w-5 h-5" />
         </button>
       </div>
 

@@ -466,66 +466,99 @@ function App() {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className='absolute z-20 pointer-events-auto left-1/2 -translate-x-1/2 bottom-20 flex space-x-2 md:left-4 md:translate-x-0 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:flex-col md:space-x-0 md:space-y-2'>
-          <button
-            onClick={() => locationData && setShowAnalytics(!showAnalytics)}
-            disabled={!locationData}
-            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
-              showAnalytics 
-                ? 'bg-blue-500/50 border-blue-400 text-white' 
-                : locationData
-                  ? 'bg-gray-700/60 hover:bg-blue-500/50 border-gray-600 text-gray-300'
-                  : 'bg-gray-700/30 border-gray-700 text-gray-500 cursor-not-allowed'
-            }`}
-            title={locationData ? "Monthly & Yearly Analysis" : "Select a location first"}
-            aria-label="Toggle analytics panel"
-          >
-            <span className="text-2xl">📊</span>
-          </button>
-          <button
-            onClick={() => locationData && setShowForecast(!showForecast)}
-            disabled={!locationData}
-            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
-              showForecast 
-                ? 'bg-purple-500/50 border-purple-400 text-white' 
-                : locationData
-                  ? 'bg-gray-700/60 hover:bg-purple-500/50 border-gray-600 text-gray-300'
-                  : 'bg-gray-700/30 border-gray-700 text-gray-500 cursor-not-allowed'
-            }`}
-            title={locationData ? "ML Forecast (7-30 days)" : "Select a location first"}
-            aria-label="Toggle forecast panel"
-          >
-            <span className="text-2xl">🔮</span>
-          </button>
-          <button
-            onClick={() => setShowEducation(!showEducation)}
-            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
-              showEducation 
-                ? 'bg-cyan-500/50 border-cyan-400 text-white' 
-                : 'bg-gray-700/60 hover:bg-cyan-500/50 border-gray-600 text-gray-300'
-            }`}
-            title="Educational content (Ctrl+E)"
-            aria-label="Toggle education panel"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className={`p-3 rounded-full transition-all duration-300 backdrop-blur-md border ${
-              showHistory 
-                ? 'bg-cyan-500/50 border-cyan-400 text-white' 
-                : 'bg-gray-700/60 hover:bg-cyan-500/50 border-gray-600 text-gray-300'
-            }`}
-            title="Search history (Ctrl+H)"
-            aria-label="Toggle history panel"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-          </button>
+        {/* Futuristic Cyber-HUD Command Dock */}
+        <div className="fixed z-50 pointer-events-auto left-1/2 -translate-x-1/2 bottom-6 flex flex-row items-center gap-2 p-2 bg-slate-950/85 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_0_35px_rgba(6,182,212,0.3)] md:left-4 md:translate-x-0 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:flex-col md:gap-3 md:p-2.5">
+          {/* Cyber Status Indicator LED */}
+          <div className="hidden md:flex flex-col items-center pb-1 border-b border-cyan-500/20 w-full mb-0.5">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+            <span className="text-[8px] font-mono text-cyan-400/70 tracking-widest mt-1">HUD</span>
+          </div>
+
+          {/* Analytics Button */}
+          <div className="relative group">
+            <button
+              onClick={() => locationData && setShowAnalytics(!showAnalytics)}
+              disabled={!locationData}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                showAnalytics 
+                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.6)] border border-blue-300 ring-2 ring-blue-400/40' 
+                  : locationData
+                    ? 'bg-slate-900/80 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 hover:border-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]'
+                    : 'bg-slate-900/40 border border-slate-800 text-slate-600 cursor-not-allowed'
+              }`}
+              aria-label="Toggle analytics panel"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </button>
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-900 border border-cyan-500/40 text-cyan-200 text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl hidden md:block z-50">
+              {locationData ? "Deep Analytics" : "Select Location First"}
+            </span>
+          </div>
+
+          {/* Forecast Button */}
+          <div className="relative group">
+            <button
+              onClick={() => locationData && setShowForecast(!showForecast)}
+              disabled={!locationData}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                showForecast 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-[0_0_20px_rgba(168,85,247,0.6)] border border-purple-300 ring-2 ring-purple-400/40' 
+                  : locationData
+                    ? 'bg-slate-900/80 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                    : 'bg-slate-900/40 border border-slate-800 text-slate-600 cursor-not-allowed'
+              }`}
+              aria-label="Toggle forecast panel"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </button>
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-900 border border-cyan-500/40 text-cyan-200 text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl hidden md:block z-50">
+              {locationData ? "AI Neural Forecast" : "Select Location First"}
+            </span>
+          </div>
+
+          {/* Education Button */}
+          <div className="relative group">
+            <button
+              onClick={() => setShowEducation(!showEducation)}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                showEducation 
+                  ? 'bg-gradient-to-br from-cyan-500 to-teal-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.6)] border border-cyan-300 ring-2 ring-cyan-400/40' 
+                  : 'bg-slate-900/80 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+              }`}
+              aria-label="Toggle education panel"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+              </svg>
+            </button>
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-900 border border-cyan-500/40 text-cyan-200 text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl hidden md:block z-50">
+              Science Hub (Ctrl+E)
+            </span>
+          </div>
+
+          {/* History Button */}
+          <div className="relative group">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                showHistory 
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.6)] border border-emerald-300 ring-2 ring-emerald-400/40' 
+                  : 'bg-slate-900/80 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 hover:border-emerald-400 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+              }`}
+              aria-label="Toggle history panel"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+            </button>
+            <span className="absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-900 border border-cyan-500/40 text-cyan-200 text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl hidden md:block z-50">
+              Telemetry Log (Ctrl+H)
+            </span>
+          </div>
         </div>
 
         {/* Education Panel */}
