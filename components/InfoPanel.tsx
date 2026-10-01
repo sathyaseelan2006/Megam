@@ -92,8 +92,6 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
   const [showShareToast, setShowShareToast] = useState(false);
   const [hasAsthma, setHasAsthma] = useState(false);
   const [outdoorLevel, setOutdoorLevel] = useState<OutdoorActivityLevel>('moderate');
-  
-  if (!data && !loading) return null;
 
   const aqiLevel = data ? getAqiLevel(data.aqi) : undefined;
   const dynamicRecommendations = data ? getDynamicRecommendations(data, hasAsthma, outdoorLevel) : [];
@@ -127,6 +125,8 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
     : null;
 
   const { briefing, isLoading: briefingLoading, refresh: refreshBriefing } = useAIBriefing(briefingContext);
+
+  if (!data && !loading) return null;
 
   const handleShare = async () => {
     if (!data) return;
