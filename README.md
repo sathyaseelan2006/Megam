@@ -1,139 +1,216 @@
-# Megam Air Quality Monitor
+# MEGAM
 
-Megam is a state-of-the-art 3D interactive application for monitoring real-time global air quality. By combining ground measurements, model-backed history, and atmospheric intelligence, it provides practical insights for cities and remote locations.
+A state-of-the-art 3D interactive application for monitoring real-time global air quality, historical trends, and client-side ML forecasting.
 
-![Megam Globe](https://placehold.co/800x400?text=Megam+3D+Globe+Preview)
+---
 
-## Key Features
+## 📅 Project Metadata
 
-- **3D Interactive Globe**: Explore global air quality on a realistic 3D Earth model (`react-globe.gl`).
-- **Hybrid Data Engine**: Integrates multiple sources:
-  - **OpenAQ** (ground measurements)
-  - **IQAir** (premium city data)
-  - **NASA MODIS** (satellite context)
-  - **WAQI** (aggregated fallback)
-- **Global Historical Analytics**:
-  - Uses **OpenAQ measurements first** and **Open-Meteo model fallback** for wider location coverage.
-  - Supports day-level history over **30 / 90 / 365** day windows.
-- **Advanced Charting**:
-  - Chart types: **Line, Area, Bar, Composed, Scatter**
-  - Metric switching: **AQI, PM2.5, PM10**
-- **Compare Mode (2-4 locations total)**:
-  - Overlay current city with up to **3 additional locations**.
-  - Source sync toggle: **Merged (all sources)** vs **Measured only (OpenAQ)**.
-  - Optional normalization: **Index (base=100)** for clearer trend-direction comparison.
-- **Pollutant Breakdown Charts**:
-  - Stacked view for **PM2.5 + PM10**
-  - Optional extended layers for **O3 / NO2**
-- **AI-Powered Forecasting**:
-  - **Client-side ML** with TensorFlow.js for browser-based training/inference.
-  - **Generative summaries** using Google Gemini integration.
-- **Personalized Health Recommendations**:
-  - Dynamic advice based on **AQI + pollutant profile + user profile**.
-  - User profile inputs include respiratory sensitivity (e.g., asthma) and outdoor activity level.
-- **Education Science Hub**:
-  - **Pollutant Encyclopedia** (sources, short/long-term impacts, safe levels).
-  - **Research Explorer + News Column** focused on air pollution, climate change, global warming, weather, and atmospheric science.
-  - Topic filters and search to quickly discover relevant resources.
-- **Privacy & Speed**:
-  - Zero-login local experience with browser storage.
-  - Vercel-ready serverless proxy architecture.
+- **Duration:** 5 Months (November 2, 2025 to March 26, 2026)
+- **Development Type:** Solo Project
+- **Author:** Sathyaseelan K
+- **Role:** Full-Stack Engineer (System Design, UI Development, API Integration, Client-Side ML Pipeline)
 
-## Latest Enhancements
+---
 
-- Added resilient history retrieval with Open-Meteo fallback when local measurements are missing.
-- Added additional chart modes and richer chart controls.
-- Added compare mode with source consistency controls and normalization.
-- Added pollutant stacked breakdown visualization.
-- Added profile-driven health recommendations in report view.
-- Added science-focused research and news discovery in the education area.
+## 🛠️ Tech Stack
 
-## Technical Architecture
+Megam is built as a highly responsive Single Page Application (SPA) using the following technologies:
 
-For a deeper system overview, see [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md).
+### Core Framework & Visuals
+*   **React 19 (TypeScript):** Modern component framework for UI state orchestration.
+*   **Vite:** Core build tool and hot-reload development server.
+*   **Three.js & `react-globe.gl`:** WebGL-based rendering engine for the interactive 3D Earth model.
+*   **Recharts:** Scalable SVG charting library used for data-rich analytics.
+*   **Tailwind CSS:** Glassmorphism-inspired, responsive dark theme styling.
 
-### Tech Stack
+### Machine Learning & AI
+*   **TensorFlow.js (`@tensorflow/tfjs` & `@tensorflow/tfjs-vis`):** In-browser training and inference of LSTM neural networks using client-side WebGL acceleration.
+*   **Google Gemini API (`@google/genai`):** Configured in environment and exposed via `geminiService.ts` for future LLM-based narrative air quality summaries (*currently provisioned but inactive in the main UI flow*).
 
-- **Frontend**: React 19, TypeScript, Vite
-- **Visualization**: `three.js`, `react-globe.gl`, `recharts`
-- **Machine Learning**: `@tensorflow/tfjs`
-- **AI Integration**: `@google/genai`
-- **Styling**: Tailwind CSS
-- **Backend/Proxy**: Vercel serverless functions
+### Database & Storage
+*   **IndexedDB:** Browser-level database used to cache compiled and trained TensorFlow.js neural network models directly on the client's machine.
+*   **LocalStorage:** Browser key-value storage managing recent search histories, locations, visual preferences, and cookie consent preferences.
+*   **Supabase (`@supabase/supabase-js`):** Client configurations are defined in `lib/supabaseClient.ts` (*a relational DB comment/reviews feature was implemented in Nov 2025 but completely removed on Dec 25, 2025*).
 
-### Data & Analytics Notes
+### Geocoding & APIs
+*   **OSM Nominatim:** Free, open-source geocoding and reverse geocoding wrapper.
+*   **Environmental Data APIs:** IQAir AirVisual API, OpenAQ API, NASA MODIS (Aerosol Optical Depth), WAQI (aggregator backup), and Open-Meteo (CAMS Air Quality history).
+*   **Vercel Serverless Functions:** Serverless proxy layer to securely forward API requests and resolve CORS restrictions.
 
-- Historical timelines prioritize measured data and backfill with model-based history when needed.
-- Data completeness indicators distinguish measured vs non-measured timeline points.
-- Compare mode can enforce measured-only mode to improve fairness across locations.
-- Education now includes both foundational pollutant content and science/news discovery.
+---
 
-## Getting Started
+## 🔍 Project Overview
 
-### Prerequisites
+### What it is
+Megam is an interactive, data-dense 3D globe application designed to monitor and forecast global air quality. Users can rotate the planet, click on any coordinate, or search for specific cities to extract instant pollutant metrics.
 
-- Node.js 18+ (Node 20+ recommended)
-- npm or pnpm
+### Why it exists
+Air quality tracking tools are heavily dependent on local government monitoring stations. This introduces massive spatial gaps in developing countries, rural regions, and oceanic coastlines. Megam fuses ground-based metrics with satellite models to guarantee global coverage.
 
-### Installation
+### Problem it Solves
+It bridges the coverage gap between official metropolitan air monitoring networks and remote areas. Additionally, it offers client-side forecasting models that train in real-time on the user's browser, eliminating the need for expensive server-side training GPU infrastructure.
 
-1. **Clone the repository**
+---
 
-```bash
-git clone https://github.com/yourusername/megam.git
-cd megam
+## 🏆 Key Milestones & Achievements
+
+1.  **3D Globe Visualizer Integration (Nov 2025):** Fully interactive 3D globe displaying color-coded pollution vectors, allowing navigation across global latitude/longitude coordinates.
+2.  **Waterfall Fallback Data Fusion (Nov 2025):** Designed a robust data collection service querying IQAir, OpenAQ, NASA, and WAQI in sequence, resolving data voids.
+3.  **Client-Side Neural Network Training (Nov 2025):** Developed an LSTM model training process using TensorFlow.js running in the client browser, outputting time-series forecasts.
+4.  **CORS Proxy Security (Nov 2025):** Built Vercel serverless API routing endpoints `/api/openaq.ts` and `/api/nasa.ts` to prevent raw API keys from being exposed on client HTTP queries.
+5.  **Multi-Location Compare Mode (Late 2025):** Built a side-by-side comparison workspace allowing trend normalization (base=100) and measurement filtration for 2-4 areas.
+6.  **Hotspot Danger Alerts & Science Hub (Mar 2026):** Finished a localized danger warning component pre-seeded with historical hotspots and an education dashboard linking directly to WHO/IPCC publications.
+
+---
+
+## 👤 Solo Responsibilities
+
+*   **Architecture Design:** Engineered a layered architecture separating components from services and backend cloud proxies.
+*   **Database Design:** Set up LocalStorage caching structures for data queries and mapped TF.js models to IndexedDB stores.
+*   **Frontend Development:** Coded complex analytical graphs, custom controls, and a custom education panel from scratch using Tailwind CSS.
+*   **API & Integration:** Configured proxies for OpenAQ and NASA, integrated geocoding utilities, and structured the Gemini schema format.
+*   **Testing & Deployment:** Configured Vite bundlers, completed Vercel configuration files, and fixed scroll performance bugs.
+
+---
+
+## ⚠️ Problem Statement
+
+*   **Data Fragmentation:** Air quality data is spread out across government databases and commercial paywalled interfaces.
+*   **Severe Monitoring Gaps:** Ground stations are sparse. Millions of people live in towns that have no local air monitoring sensors.
+*   **High Server Infrastructure Costs:** Running neural-network forecasts for thousands of locations requires constant server-side GPU calculations.
+*   **User Privacy Encroachment:** Typical environmental utilities require GPS tracking permissions and upload search profiles to remote servers.
+
+---
+
+## 💡 Solution Implemented
+
+Megam provides a React 19 single-page application centered on an interactive WebGL globe. When a coordinate is clicked, it determines the location using reverse geocoding, queries the nearest monitoring devices within a 100km radius, and falls back to NASA satellite data if nothing is found. 
+
+To forecast, the application downloads 180 days of air quality history (fusing OpenAQ ground sensors with Open-Meteo models) and trains a custom LSTM neural network directly in the user's browser via TensorFlow.js.
+
+---
+
+## 🌟 Key Features
+
+### 1. 🌐 3D Interactive Globe
+*   **Feature:** Zoomable, draggable 3D globe powered by `react-globe.gl`.
+*   **Capability:** Real-time marker generation based on coordinates, displaying local values and data source confidence scores.
+*   **Benefit:** Enables an interactive, visual search interface for climate monitoring.
+
+### 2. 🔀 Hybrid Data Fusion Engine
+*   **Feature:** Priority-sorted API waterfall fetch algorithm.
+*   **Capability:** Attempts IQAir (primary, includes weather data), falls back to OpenAQ (official ground stations), then NASA MODIS satellite data, and finally WAQI.
+*   **Benefit:** Guarantees that users receive air quality feedback for any coordinate on Earth.
+
+### 3. 🧠 Browser-native ML Forecasting
+*   **Feature:** Client-side LSTM (Long Short-Term Memory) time-series forecasting.
+*   **Capability:** Trains a model on the client GPU/CPU using 180 days of historical data and writes weights to IndexedDB.
+*   **Benefit:** No subscription or backend API costs for neural network training; preserves the user's search privacy.
+
+### 4. 📈 Advanced Analytics & Comparison Mode
+*   **Feature:** Comparative charting interface for up to 4 locations.
+*   **Capability:** Normalizes trend charts (Index base=100) and toggles between merged datasets and measured-only ground readings.
+*   **Benefit:** Allows researchers to contrast pollution patterns across different global regions on a unified scale.
+
+### 5. 📚 Atmospheric Education & Science Hub
+*   **Feature:** Detailed pollutant encyclopedia and research index.
+*   **Capability:** Explains PM2.5, PM10, Lead, VOCs, and Carbon Monoxide with direct links to WHO and Copernicus publications.
+*   **Benefit:** Translates raw AQI values into actionable medical and environmental safety insights.
+
+---
+
+## 🏗️ System Architecture
+
+The following diagram illustrates Megam's layered data routing structure:
+
+```
+                  🖥️ Client Browser (Vite + React 19)
+       ┌───────────────────────────┴───────────────────────────┐
+       ▼                                                       ▼
+ ┌──────────┐                                            ┌──────────┐
+ │  3D Globe│ <────────────────────────────────────────> │UI Panels │
+ └────┬─────┘                                            └────┬─────┘
+      │                                                       │
+      ▼                                                       ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                           Service Layer                           │
+│  - satelliteService.ts  - mlModelService.ts  - geocodingService.ts│
+└──────┬───────────────────────────┬───────────────────────────┬────┘
+       │                           │                           │
+       ▼ (Read/Write)              ▼ (Read/Write)              ▼ (API Proxy)
+┌──────────────┐            ┌──────────────┐            ┌──────────────┐
+│ LocalStorage │            │  IndexedDB   │            │Vercel API    │
+│ (Search logs/│            │ (Trained LSTM│            │Proxy         │
+│ Preferences) │            │  model binary│            │(CORS Bypass) │
+└──────────────┘            └──────────────┘            └──────┬───────┘
+                                                               │
+                                                               ▼
+                                                       ┌──────────────┐
+                                                       │ External APIs│
+                                                       │ (IQAir, NASA,│
+                                                       │ OpenAQ, WAQI)│
+                                                       └──────────────┘
 ```
 
-2. **Install dependencies**
+---
 
-```bash
-npm install
-```
+## 🗄️ Database Concepts Applied
 
-3. **Environment setup**
+### 1. Client-Side Binary Storage (IndexedDB)
+Trained TensorFlow.js neural models cannot be stored efficiently in string-based LocalStorage. Megam utilizes IndexedDB (`indexeddb://`) to save model configurations, layers, and trained weight values directly inside the browser.
 
-Create your environment file and set API keys:
+### 2. Key-Value Session Storage (LocalStorage)
+Handles lightweight state persistence including:
+*   `favorites`: Saved tracking points.
+*   `aqi_history_`: Cached 180-day historical datasets to prevent redundant API queries.
+*   `cookie_consent`: Tracking permission settings.
 
-```bash
-cp .env.example .env
-```
+### 3. In-Memory Data Caching
+Implements session caching within the service layer. Repeated coordinate lookups retrieve cached data objects, preventing API rate-limiting issues.
 
-Example keys:
+### 4. Relational Database Archival Note
+The application includes a `supabaseClient.ts` script configuration for a PostgreSQL reviews database. However, this feature was completely archived and removed from the active application codebase on **December 25, 2025** to shift the product to a 100% zero-login, client-driven platform.
 
-```env
-VITE_OPENAQ_API_KEY=your_openaq_key
-VITE_IQAIR_API_KEY=your_iqair_key
-VITE_WAQI_API_KEY=your_waqi_key
-VITE_NASA_API_KEY=your_nasa_key
-VITE_GOOGLE_GENAI_API_KEY=your_gemini_key
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_key
-```
+---
 
-4. **Run development server**
+## 💥 Challenges Faced
 
-```bash
-npm run dev
-```
+### **[CHALLENGE-01] CORS Restrictions on Air Quality APIs**
+*   **Problem:** Browsers blocked direct API calls from `localhost` or custom domains to OpenAQ and NASA due to missing Access-Control-Allow-Origin headers.
+*   **Solution:** Built Node.js-based serverless proxy endpoints inside `/api/openaq.ts` and `/api/nasa.ts` to append CORS headers and route traffic.
 
-5. **Type-check and build**
+### **[CHALLENGE-02] Data Gaps in Rural & Offshore Locations**
+*   **Problem:** The OpenAQ database contains zero monitoring sensors in remote regions and oceans, causing API fetches to fail.
+*   **Solution:** Created a fallback geofence system. If a ground sensor is absent within a 100km radius, the application fetches NASA MODIS satellite modeling context and Open-Meteo forecasts.
 
-```bash
-npm run lint
-npm run build
-```
+### **[CHALLENGE-03] Heavy Computational Overhead of Time-Series Training**
+*   **Problem:** Training LSTM networks on 180 days of historical data takes significant time. Training on a serverless backend would hit execution limits and cause high computing bills.
+*   **Solution:** Ported the ML pipelines entirely to the client browser using TensorFlow.js. The engine trains in background threads, utilizing the user's local hardware (WebGL accelerated) and storing results in IndexedDB.
 
-## Machine Learning Pipeline
+---
 
-Megam uses a dual prediction flow:
+## 📈 Results & Impact
 
-1. **ML Mode (TensorFlow.js)**: Activated when sufficient historical data is available.
-2. **Fast Mode (Statistical)**: Used for sparse-data scenarios and quick response.
+*   **$0 Monthly Server Costs:** The entire platform runs serverless, and ML computations are delegated to client hardware.
+*   **True Global Monitoring Coverage:** Real-time satellite fallbacks allow air quality analysis for any point on Earth.
+*   **Absolute User Privacy:** No user details or search records are uploaded or stored on central servers.
+*   **High-Fidelity Offline Analysis:** Cached LSTM neural models allow predictions to be evaluated even in poor network environments.
 
-## Contributing
+---
 
-Contributions are welcome. Open an issue or submit a PR.
+## 🔮 Future Scope
 
-## License
+1.  **Narrative summaries activation:** Integrate and connect `geminiService.ts` to output AI-generated, natural language summaries of local pollutant conditions.
+2.  **Offline Progressive Web App (PWA):** Enable service workers to support fully offline location searches and forecast executions.
+3.  **Community Warnings Backend:** Re-enable the Supabase integration to build a privacy-first, community-driven warning board.
+4.  **Mobile Wrapper:** Package the application via Capacitor to distribute Megam as a native Android and iOS mobile app.
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
+---
+
+## 🔗 Project Links
+
+*   **GitHub Repository:** [github.com/yourusername/megam](https://github.com/yourusername/megam)
+*   **NASA POWER API:** [api.nasa.gov](https://api.nasa.gov/)
+*   **OpenAQ Documentation:** [docs.openaq.org](https://docs.openaq.org/)
+*   **IQAir Platform:** [iqair.com](https://www.iqair.com/)

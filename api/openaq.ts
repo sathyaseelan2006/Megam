@@ -1,49 +1,50 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyCors, validateUpstreamUrl } from './_middleware/index';
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, X-API-Key'
-  );
+const ALLOWED_HOSTS = [/^api\.openaq\.org$/i, /^.*\.openaq\.org$/i];
 
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (applyCors(req, res)) {
     return;
   }
 
   try {
     const { url } = req.query;
-    
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'URL parameter is required' });
+    const validation = validateUpstreamUrl(url, ALLOWED_HOSTS);
+
+    if (!validation.valid || !validation.url) {
+      return res.status(400).json({
+        error: validation.error || 'Invalid OpenAQ URL parameter',
+      });
     }
 
-    const OPENAQ_API_KEY = process.env.VITE_OPENAQ_API_KEY;
-    
+    const OPENAQ_API_KEY = process.env.VITE_OPENAQ_API_KEY || process.env.OPENAQ_API_KEY;
+
     if (!OPENAQ_API_KEY) {
-      return res.status(500).json({ error: 'OpenAQ API key not configured' });
+      return res.status(500).json({ error: 'OpenAQ API key is not configured on server' });
     }
 
-    // Forward the request to OpenAQ
-    const response = await fetch(url, {
+    // Forward request with edge timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const response = await fetch(validation.url, {
       headers: {
         'X-API-Key': OPENAQ_API_KEY,
+        Accept: 'application/json',
       },
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
+
     const data = await response.json();
-    
-    res.status(response.status).json(data);
+    return res.status(response.status).json(data);
   } catch (error: any) {
-    console.error('Proxy error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[OpenAQ Proxy Error]:', error);
+    const isTimeout = error.name === 'AbortError';
+    return res.status(isTimeout ? 504 : 500).json({
+      error: isTimeout ? 'Gateway Timeout fetching OpenAQ' : error.message || 'OpenAQ Proxy Failure',
+    });
   }
 }

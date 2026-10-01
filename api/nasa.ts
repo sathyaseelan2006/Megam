@@ -1,35 +1,43 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyCors, validateUpstreamUrl } from './_middleware/index';
+
+const ALLOWED_HOSTS = [
+  /^power\.larc\.nasa\.gov$/i,
+  /^appeears\.earthdatacloud\.nasa\.gov$/i,
+  /^api\.nasa\.gov$/i,
+];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date'
-  );
-
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
+  if (applyCors(req, res)) {
     return;
   }
 
   try {
     const { url } = req.query;
+    const validation = validateUpstreamUrl(url, ALLOWED_HOSTS);
 
-    if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'URL parameter is required' });
+    if (!validation.valid || !validation.url) {
+      return res.status(400).json({
+        error: validation.error || 'Invalid NASA URL parameter',
+      });
     }
 
-    // Forward the request to NASA POWER (no API key required)
-    const response = await fetch(url);
-    const data = await response.json();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    res.status(response.status).json(data);
+    const response = await fetch(validation.url, {
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    return res.status(response.status).json(data);
   } catch (error: any) {
-    console.error('NASA proxy error:', error);
-    res.status(500).json({ error: error.message ?? 'NASA proxy failed' });
+    console.error('[NASA Proxy Error]:', error);
+    const isTimeout = error.name === 'AbortError';
+    return res.status(isTimeout ? 504 : 500).json({
+      error: isTimeout ? 'Gateway Timeout fetching NASA API' : error.message || 'NASA Proxy Failed',
+    });
   }
 }

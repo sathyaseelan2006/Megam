@@ -14,7 +14,6 @@ import { LocationData } from './types';
 import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
 import { getComprehensiveAQIData } from './services/satelliteService';
 import { historyService } from './services/historyService';
-import { preloadTensorFlow } from './services/mlPreloader';
 import { GLOBAL_DANGER_ZONE_SEEDS } from './constants';
 
 interface DangerZonePoint {
@@ -104,18 +103,6 @@ function App() {
     const prioritized = deduped.sort((a, b) => b.aqi - a.aqi);
     setDangerZones(prioritized.slice(0, 14));
   }, [getLikelyReason]);
-
-  // Smart ML preloading: only load when user shows interest
-  useEffect(() => {
-    // Preload when user interacts with location features
-    const shouldPreload = locationData !== null || showForecast;
-    
-    if (shouldPreload) {
-      preloadTensorFlow().catch(err => {
-        console.log('ML features will use Fast Mode:', err);
-      });
-    }
-  }, [locationData, showForecast]);
 
   useEffect(() => {
     refreshDangerZones(locationData);

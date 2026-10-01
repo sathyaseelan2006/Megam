@@ -30,6 +30,8 @@ import {
   TrainingProgress,
   ModelConfig
 } from './mlModelService';
+import { globalMLWorker } from '../core/workers/workerClient';
+import { isErr, isOk } from '../core/types/result';
 
 export interface PredictionData {
   date: string;
@@ -262,9 +264,74 @@ export const generateForecast = async (
       throw new Error('Insufficient historical data for ML predictions');
     }
 
-    // Step 3: Train model if needed
+    // Step 3: Off-thread Worker Execution Priority
+    if (globalMLWorker.isAvailable()) {
+      try {
+        console.log('⚡ Using Dedicated Off-Thread Web Worker for LSTM ML operations...');
+        if (!model) {
+          const trainRes = await globalMLWorker.train(
+            locationKey,
+            dataset.data,
+            { epochs: 20, batchSize: 32 },
+            (p) => onTrainingProgress?.({
+              epoch: p.epoch,
+              totalEpochs: p.totalEpochs,
+              loss: p.loss,
+              valLoss: p.valLoss ?? p.loss,
+              accuracy: p.accuracy,
+              estimatedTimeRemaining: Math.max(0, (p.totalEpochs - p.epoch) * 0.4)
+            })
+          );
+          if (isErr(trainRes)) throw trainRes.error;
+        }
+
+        const predRes = await globalMLWorker.predict(locationKey, dataset.data, days);
+        if (isOk(predRes)) {
+          const formattedPredictions: PredictionData[] = predRes.value.map((pred, index) => {
+            const trend = index === 0 ? analyzeTrend(dataset!.data.slice(-30).map(d => d.aqi)) : 'stable';
+            const season = new Date(pred.date).toLocaleString('default', { month: 'long' });
+            return {
+              date: pred.date,
+              predictedAQI: pred.predictedAQI,
+              confidence: pred.confidence,
+              trend,
+              factors: [
+                `Off-Thread Web Worker LSTM Prediction (Zero UI Stutter)`,
+                `Trained on ${dataset!.totalPoints} days (${dataset!.completeness}% real data)`,
+                `Uncertainty: ±${pred.uncertainty} AQI`,
+                ...identifyFactors(trend, season, pred.confidence)
+              ]
+            };
+          });
+
+          return {
+            location: {
+              city: currentData.city,
+              country: currentData.country,
+              lat,
+              lng
+            },
+            currentAQI: currentData.aqi,
+            predictions: formattedPredictions,
+            modelInfo: {
+              algorithm: `TensorFlow.js LSTM (Worker Thread, WebGL Accelerated)`,
+              trainedOn: `${trainingDataset.totalPoints} days of real historical data`,
+              accuracy: Math.max(40, 90 - (days * 2)),
+              isRealML: true,
+              dataSource: `OpenAQ + NASA POWER (${trainingDataset.completeness}% real measurements)`,
+              trainingDays: trainingDataset.totalPoints
+            },
+            needsTraining
+          };
+        }
+      } catch (workerErr) {
+        console.warn('⚠️ Web Worker ML failed, falling back to local thread execution:', workerErr);
+      }
+    }
+
+    // Step 3 (Fallback): Train model on local thread if needed
     if (!model) {
-      console.log('🏋️ No existing model found. Training new LSTM model...');
+      console.log('🏋️ No existing model found. Training new LSTM model on local thread...');
       
       // Build fresh LSTM model (now async)
       model = await buildLSTMModel();

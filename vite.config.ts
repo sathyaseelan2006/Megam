@@ -97,14 +97,7 @@ export default defineConfig(({ mode }) => {
             drop_debugger: true,
           },
         },
-        rollupOptions: {
-          output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
-              'globe': ['react-globe.gl'],
-            },
-          },
-        },
+        rollupOptions: {},
       },
       optimizeDeps: {
         include: ['react', 'react-dom', 'react-globe.gl', '@google/genai'],

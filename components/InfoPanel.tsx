@@ -3,6 +3,9 @@ import { AQI_LEVELS } from '../constants';
 import { LocationData, AQILevel } from '../types';
 import { CloseIcon, InfoIcon, ShieldCheckIcon, ShareIcon } from './icons';
 import { POLLUTANT_ENCYCLOPEDIA } from '../educationalContent';
+import { AIBriefingCard } from './AIBriefingCard';
+import { useAIBriefing } from '../hooks/useAIBriefing';
+import { BriefingInputContext } from '../core/ai/types';
 
 interface InfoPanelProps {
   data: LocationData | null;
@@ -94,6 +97,36 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
 
   const aqiLevel = data ? getAqiLevel(data.aqi) : undefined;
   const dynamicRecommendations = data ? getDynamicRecommendations(data, hasAsthma, outdoorLevel) : [];
+
+  const briefingContext: BriefingInputContext | null = data
+    ? {
+        city: data.city,
+        country: data.country,
+        lat: data.lat,
+        lng: data.lng,
+        aqi: data.aqi,
+        dominantPollutant: data.pollutants?.[0]?.name || 'PM2.5',
+        pollutants: {
+          pm25: data.pollutants?.find((p) => p.name.toLowerCase().includes('2.5'))?.concentration,
+          pm10: data.pollutants?.find((p) => p.name.toLowerCase().includes('10'))?.concentration,
+          o3: data.pollutants?.find((p) => p.name.toLowerCase().includes('o3') || p.name.toLowerCase().includes('ozone'))?.concentration,
+          no2: data.pollutants?.find((p) => p.name.toLowerCase().includes('no2'))?.concentration,
+          so2: data.pollutants?.find((p) => p.name.toLowerCase().includes('so2'))?.concentration,
+          co: data.pollutants?.find((p) => p.name.toLowerCase().includes('co'))?.concentration,
+        },
+        weather: data.weather
+          ? {
+              temperature: data.weather.temperature,
+              humidity: data.weather.humidity,
+              windSpeed: data.weather.windSpeed,
+              windDirection: data.weather.windDirection,
+            }
+          : undefined,
+        isSatelliteEstimate: data.dataSource === 'satellite',
+      }
+    : null;
+
+  const { briefing, isLoading: briefingLoading, refresh: refreshBriefing } = useAIBriefing(briefingContext);
 
   const handleShare = async () => {
     if (!data) return;
@@ -382,10 +415,19 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
             </div>
           )}
 
+          {/* AI Atmospheric Intelligence Briefing */}
+          <div className="mb-4">
+            <AIBriefingCard
+              briefing={briefing}
+              isLoading={briefingLoading}
+              onRefresh={refreshBriefing}
+            />
+          </div>
+
           <div className="bg-gray-900/50 p-3 rounded-lg mb-4">
             <div className="flex items-start">
               <InfoIcon className="w-5 h-5 mr-2 mt-1 text-cyan-400 flex-shrink-0" />
-              <p className="text-sm text-gray-300">{aqiLevel.healthImpact}</p>
+              <p className="text-sm text-gray-300">{aqiLevel?.healthImpact}</p>
             </div>
           </div>
           
