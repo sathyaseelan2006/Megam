@@ -9,6 +9,7 @@ import HistoryPanel from './components/HistoryPanel';
 import ForecastPanel from './components/ForecastPanel';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import CookieConsent from './components/CookieConsent';
+import { ExtremeHazardBanner } from './components/ExtremeHazardBanner';
 import Footer from './components/Footer';
 import { LocationData } from './types';
 import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
@@ -384,6 +385,11 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [locationData, error, showEducation, showHistory, showAnalytics, handlePanelClose]);
 
+  const handleHazardFocus = useCallback((lat: number, lng: number) => {
+    globeRef.current?.pointOfView({ lat, lng, altitude: 1.5 }, 1200);
+    handleGlobeClick({ lat, lng });
+  }, [handleGlobeClick]);
+
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
       <GlobeComponent 
@@ -395,6 +401,9 @@ function App() {
         onBackgroundClick={handlePanelClose}
       />
       
+      {/* Global Real-time Extreme Hazard Alert Banner */}
+      <ExtremeHazardBanner onFocusLocation={handleHazardFocus} />
+
       <div className="absolute inset-0 pointer-events-none">
         <div className='pointer-events-auto'>
           <SearchBar 
