@@ -1,8 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GlobeMethods } from 'react-globe.gl';
-import SearchBar from './components/SearchBar';
+import { TopCommandBar } from './components/TopCommandBar';
 import InfoPanel from './components/InfoPanel';
-import GlobeToolbar from './components/GlobeToolbar';
 import GlobeComponent from './components/GlobeComponent';
 import EducationPanel from './components/EducationPanel';
 import HistoryPanel from './components/HistoryPanel';
@@ -404,19 +403,36 @@ function App() {
       {/* Global Real-time Extreme Hazard Alert Banner */}
       <ExtremeHazardBanner onFocusLocation={handleHazardFocus} />
 
-      <div className="absolute inset-0 pointer-events-none">
-        <div className='pointer-events-auto'>
-          <SearchBar 
-              onSearch={handleSearch}
-              onMyLocation={handleMyLocation}
-              loading={isLoading}
-          />
-        </div>
+        {/* Unified Futuristic Top Command Bar */}
+        <TopCommandBar 
+          onSearch={handleSearch}
+          onMyLocation={handleMyLocation}
+          isSatelliteView={isSatelliteView}
+          onToggleSatelliteView={handleToggleSatelliteView}
+          onCenterGlobe={handleCenterGlobe}
+          dangerZonesCount={dangerZones.length}
+          onDangerZoneClick={() => {
+            if (topDangerZone) {
+              handleHazardFocus(topDangerZone.lat, topDangerZone.lng);
+            }
+          }}
+          loading={isLoading}
+          currentCity={locationData?.city}
+          currentCountry={locationData?.country}
+        />
         
         {error && (
-            <div className="absolute top-20 left-4 z-10 p-4 max-w-md bg-red-600/80 text-white rounded-lg backdrop-blur-md border border-red-400 pointer-events-auto">
-                <p className='font-bold'>Error</p>
-                <p>{error}</p>
+            <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 p-4 w-[90%] max-w-md bg-red-950/90 text-red-100 rounded-2xl backdrop-blur-2xl border border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.4)] pointer-events-auto flex items-center justify-between gap-3">
+                <div>
+                  <p className='font-mono text-xs font-bold uppercase tracking-wider text-red-400'>Telemetry Error</p>
+                  <p className="text-xs text-red-200 mt-0.5">{error}</p>
+                </div>
+                <button
+                  onClick={() => setError(null)}
+                  className="p-1.5 rounded-lg bg-red-900/60 hover:bg-red-800 text-red-200 text-xs font-mono"
+                >
+                  ✕
+                </button>
             </div>
         )}
 
@@ -425,15 +441,6 @@ function App() {
               data={locationData}
               onClose={handlePanelClose}
               loading={isLoading}
-          />
-        </div>
-
-        <div className='pointer-events-auto'>
-          <GlobeToolbar
-            isSatelliteView={isSatelliteView}
-            onToggleSatelliteView={handleToggleSatelliteView}
-            onCenterGlobe={handleCenterGlobe}
-            loading={isLoading}
           />
         </div>
 
@@ -599,8 +606,6 @@ function App() {
             />
           </div>
         )}
-
-      </div>
 
       {/* Cookie Consent Banner */}
       <CookieConsent 
