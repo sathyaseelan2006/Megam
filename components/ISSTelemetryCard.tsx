@@ -22,7 +22,7 @@ export const ISSTelemetryCard: React.FC<ISSTelemetryCardProps> = ({
       <div className="p-3.5 bg-gradient-to-r from-cyan-950/70 via-slate-900/80 to-slate-950/80 border-b border-cyan-500/30 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.4)]">
-            <span className="text-base">🛰️</span>
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m7 7 10 10M8 4l4-2 2 2-2 4-4-4Zm8 8 4-2 2 2-2 4-4-4Z"/><path d="m4 8-2 4 2 2 4-2-4-4Zm8 8-2 4 2 2 4-2-4-4Z"/></svg>
           </div>
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-100 flex items-center gap-1.5">
@@ -107,7 +107,7 @@ export const ISSTelemetryCard: React.FC<ISSTelemetryCardProps> = ({
 
         {/* 3D Model Info Notice */}
         <div className="text-[10px] text-slate-400 bg-slate-900/40 p-2 rounded-lg border border-slate-800/80">
-          💡 <span className="text-slate-300 font-semibold">Custom 3D Model:</span> Drop your custom <code className="text-cyan-300">iss.glb</code> into <code className="text-cyan-300">public/models/iss.glb</code> to override the procedural 3D model.
+          <svg className="inline w-3.5 h-3.5 mr-1 text-cyan-300 align-[-2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64"/><circle cx="12" cy="12" r="4"/></svg> <span className="text-slate-300 font-semibold">Custom 3D Model:</span> Drop your custom <code className="text-cyan-300">iss.glb</code> into <code className="text-cyan-300">public/models/iss.glb</code> to override the procedural 3D model.
         </div>
 
       </div>

@@ -30,7 +30,7 @@ export const TrainingModal: React.FC<TrainingModalProps> = ({
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center animate-pulse">
-            <span className="text-3xl">🧠</span>
+            <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M9 4.5a3 3 0 0 0-5.2 2 3 3 0 0 0 .3 5.9A3 3 0 0 0 7 17.5h2m6-13a3 3 0 0 1 5.2 2 3 3 0 0 1-.3 5.9 3 3 0 0 1-2.9 5.1H15M9 4.5V20m6-15.5V20M9 9H6m9 2h3M9 15H7m8 1h2"/></svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-800">Training AI Model</h2>
           <p className="text-gray-600">Building neural network for accurate predictions...</p>
@@ -88,7 +88,7 @@ export const TrainingModal: React.FC<TrainingModalProps> = ({
         {/* Training Tips */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex gap-3">
-            <div className="text-2xl">💡</div>
+            <svg className="w-6 h-6 text-blue-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M9 18h6m-5 3h4m-2-19a7 7 0 0 0-4 12.7c.6.4 1 1.1 1 1.8h6c0-.7.4-1.4 1-1.8A7 7 0 0 0 12 2Z"/></svg>
             <div className="flex-1 text-sm text-blue-800">
               <strong>First-time training:</strong> The model is learning patterns from 180 days of real air quality data. This takes ~30-60 seconds but only happens once per location!
             </div>
@@ -98,16 +98,16 @@ export const TrainingModal: React.FC<TrainingModalProps> = ({
         {/* Status Messages */}
         <div className="space-y-2 text-center text-sm text-gray-600">
           {progress.epoch < 10 && (
-            <p>🔄 Initializing neural network layers...</p>
+            <p>Initializing model layers...</p>
           )}
           {progress.epoch >= 10 && progress.epoch < 30 && (
-            <p>📊 Learning historical patterns...</p>
+            <p>Learning historical patterns...</p>
           )}
           {progress.epoch >= 30 && progress.epoch < 45 && (
-            <p>🎯 Optimizing prediction accuracy...</p>
+            <p>Optimizing prediction accuracy...</p>
           )}
           {progress.epoch >= 45 && (
-            <p>✨ Finalizing model weights...</p>
+            <p>Finalizing model weights...</p>
           )}
         </div>
 

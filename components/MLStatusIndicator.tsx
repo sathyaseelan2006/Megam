@@ -22,7 +22,7 @@ export const MLStatusIndicator: React.FC = () => {
     return (
       <div className="fixed bottom-20 left-4 z-10 px-3 py-1.5 bg-green-600/80 backdrop-blur-md rounded-full border border-green-400/50 text-white text-xs font-medium flex items-center gap-2 animate-fadeIn">
         <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>
-        🧠 ML Ready
+        Model ready
       </div>
     );
   }

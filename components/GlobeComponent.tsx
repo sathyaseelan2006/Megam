@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Globe, { GlobeMethods } from 'react-globe.gl';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import type { Object3D } from 'three';
 import { LocationData } from '../types';
-import { BACKGROUND_IMG_URL, GLOBE_IMG_URL } from '../constants';
+import { GLOBE_IMG_URL } from '../constants';
 import { globalStreamlineEngine } from '../core/graphics/streamlineEngine';
 import { AtmosphericPlumePath } from '../core/graphics/types';
 import { ISSTelemetry, issTrackerService } from '../core/satellite/issTracker';
@@ -64,7 +66,7 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
 
     // Add ISS predicted orbit path arc segments
     if (issTelemetry) {
-      const orbitPoints = issTrackerService.getPredictedOrbitPath(36);
+      const orbitPoints = issTrackerService.getPredictedOrbitPath(18);
       for (let i = 0; i < orbitPoints.length - 1; i++) {
         list.push({
           id: `iss-orbit-seg-${i}`,
@@ -102,7 +104,7 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
 
   // Effect to control rings and camera based on location data
   useEffect(() => {
-    const dangerRings = dangerZones.map((zone) => ({
+    const dangerRings = dangerZones.slice(0, 5).map((zone) => ({
       lat: zone.lat,
       lng: zone.lng,
       maxR: zone.aqi >= 250 ? 8 : 6,
@@ -150,12 +152,47 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
     }
   }, [globeRef]);
 
+  // The downloaded nebula is an emissive, spherical skybox. Keep it centered
+  // on the globe so it remains visible as the user rotates and zooms.
+  useEffect(() => {
+    let disposed = false;
+    let skybox: Object3D | null = null;
+    const loader = new GLTFLoader();
+    const attachSkybox = () => {
+      if (!globeRef.current || disposed) return;
+      const scene = globeRef.current.scene();
+      scene.background = null;
+      loader.load('/models/nebula/scene.gltf', (gltf) => {
+        if (disposed || !globeRef.current) return;
+        skybox = gltf.scene;
+        skybox.position.set(0, 0, 0);
+        skybox.scale.setScalar(1.15);
+        skybox.renderOrder = -1;
+        scene.add(skybox);
+      });
+    };
+
+    const retry = window.setInterval(() => {
+      if (globeRef.current) {
+        window.clearInterval(retry);
+        attachSkybox();
+      }
+    }, 100);
+    const timeout = window.setTimeout(() => window.clearInterval(retry), 10000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(retry);
+      window.clearTimeout(timeout);
+      if (skybox && globeRef.current) globeRef.current.scene().remove(skybox);
+    };
+  }, [globeRef]);
+
   return (
     <Globe
       ref={globeRef}
       globeImageUrl={GLOBE_IMG_URL}
       bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-      backgroundImageUrl={BACKGROUND_IMG_URL}
       onGlobeClick={onGlobeClick}
       onBackgroundClick={onBackgroundClick}
       // Pulsing Danger and Focus Rings
@@ -194,9 +231,9 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
       arcLabel={(d: object) => {
         const p = d as AtmosphericPlumePath;
         if (p.name.includes('ISS')) {
-          return `<div class="bg-slate-900/90 text-amber-200 text-xs px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-xl font-mono">🛰️ ${p.name} (418 km Orbit)</div>`;
+          return `<div class="bg-slate-900/90 text-amber-200 text-xs px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-xl font-mono"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" style="display:inline;vertical-align:-2px;margin-right:5px" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m7 7 10 10M8 4l4-2 2 2-2 4-4-4Zm8 8 4-2 2 2-2 4-4-4Z"/><path d="m4 8-2 4 2 2 4-2-4-4Zm8 8-2 4 2 2 4-2-4-4Z"/></svg>${p.name} (418 km Orbit)</div>`;
         }
-        return `<div class="bg-slate-900/90 text-white text-xs px-2.5 py-1 rounded-lg border border-slate-700 shadow-lg font-mono">💨 ${p.name} <span class="font-bold text-amber-300">(AQI ${p.aqi})</span></div>`;
+        return `<div class="bg-slate-900/90 text-white text-xs px-2.5 py-1 rounded-lg border border-slate-700 shadow-lg font-mono">${p.name} <span class="font-bold text-amber-300">(AQI ${p.aqi})</span></div>`;
       }}
       // ISS 3D Custom Objects Layer
       objectsData={issObjects}
@@ -211,7 +248,7 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
       }}
       objectLabel={() => {
         return `<div class="bg-slate-950/90 text-cyan-200 text-xs px-3 py-1.5 rounded-xl border border-cyan-400 shadow-2xl font-mono flex items-center gap-2">
-          <span>🛰️</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m7 7 10 10M8 4l4-2 2 2-2 4-4-4Zm8 8 4-2 2 2-2 4-4-4Z"/><path d="m4 8-2 4 2 2 4-2-4-4Zm8 8-2 4 2 2 4-2-4-4Z"/></svg>
           <span><strong>International Space Station</strong> (Click to Track)</span>
         </div>`;
       }}
@@ -226,7 +263,7 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
         el.innerHTML = `
           <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/90 border border-cyan-400 text-cyan-200 text-xs font-mono shadow-[0_0_25px_rgba(6,182,212,0.9)] backdrop-blur-md hover:scale-110 transition-transform">
             <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-            <span class="font-bold">🛰️ ISS</span>
+            <span class="font-bold">ISS</span>
             <span class="text-amber-300 text-[10px] font-bold">${d.speed ? d.speed.toLocaleString() : '27,580'} km/h</span>
           </div>
         `;

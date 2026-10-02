@@ -56,11 +56,11 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
   return (
     <header className="fixed top-3 left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-6xl z-50 pointer-events-auto">
-      <div className="flex items-center justify-between gap-2 md:gap-4 px-3 py-2 md:px-4 md:py-2.5 bg-slate-950/80 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.2)]">
+      <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-2 md:gap-4 px-3 py-2 md:px-4 md:py-2.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700 rounded-xl shadow-xl">
         
         {/* Brand & Live Satellite Status */}
         <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-slate-800 border border-slate-600">
             <span className="text-lg font-black tracking-tighter text-cyan-300">M</span>
             <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping opacity-75" />
             <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-400" />
@@ -68,11 +68,11 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
           
           <div className="hidden sm:flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-widest uppercase bg-gradient-to-r from-cyan-300 via-teal-200 to-indigo-300 bg-clip-text text-transparent">
+              <span className="text-sm font-semibold tracking-[0.16em] uppercase text-slate-100">
                 MEGAM
               </span>
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
-                v2.5 AI
+                LIVE
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -87,9 +87,9 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         {/* High-Tech Omnibar Search */}
         <form 
           onSubmit={handleFormSubmit}
-          className={`relative flex-1 max-w-md transition-all duration-300 ${
-            isFocused ? 'ring-2 ring-cyan-400/60 shadow-[0_0_25px_rgba(6,182,212,0.35)]' : ''
-          } rounded-xl bg-slate-900/90 border border-cyan-500/30 flex items-center px-3 py-1.5`}
+          className={`relative order-3 basis-full md:order-none md:basis-auto flex-1 max-w-none md:max-w-md transition-all duration-200 ${
+            isFocused ? 'ring-2 ring-cyan-400/50' : ''
+          } rounded-lg bg-slate-900 border border-slate-700 flex items-center px-3 py-1.5`}
         >
           <SearchIcon className="w-4 h-4 text-cyan-400 flex-shrink-0 mr-2" />
           <input
@@ -147,7 +147,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
             }`}
             title="Track International Space Station (3D Model & Orbit)"
           >
-            <span className="text-xs">🛰️</span>
+            <SatelliteIcon className="w-4 h-4" />
             <span className="hidden sm:inline font-bold">ISS</span>
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
           </button>

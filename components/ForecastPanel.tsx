@@ -94,7 +94,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
   return (
     <aside
       aria-label="Air Quality Forecasting Console"
-      className="fixed left-20 md:left-24 top-4 bottom-4 w-[calc(100vw-6rem)] max-w-lg z-40 bg-slate-950/85 backdrop-blur-2xl border border-cyan-500/30 rounded-3xl shadow-[0_0_50px_rgba(6,182,212,0.18)] flex flex-col overflow-hidden animate-fadeInLeft"
+      className="fixed left-3 right-3 top-20 bottom-16 md:left-24 md:right-auto md:top-4 md:bottom-4 w-auto md:w-[calc(100vw-6rem)] md:max-w-lg z-40 bg-slate-950/95 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fadeInLeft"
     >
       {/* Cyberpunk Ambient Neon Glow */}
       <div className="absolute -top-20 -right-20 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -153,7 +153,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
         {/* Prediction Mode & Engine Switcher */}
         <div className="p-3.5 bg-slate-900/70 border border-cyan-500/20 rounded-2xl backdrop-blur-md flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <span className="text-lg">⚡</span>
+            <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M13 3 5 13h6l-1 8 9-11h-6l1-7Z"/></svg>
             <div>
               <p className="text-xs font-bold text-white tracking-wide">
                 {useML ? 'TensorFlow.js LSTM Engine' : 'Statistical Momentum Model'}
@@ -212,7 +212,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
           <div className="space-y-2.5">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <h3 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span>📊</span> Temporal Predictions
+                Temporal Predictions
               </h3>
               <span className="text-[10px] font-mono text-cyan-400">
                 {forecast.predictions.length} Steps Projected
@@ -221,7 +221,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
 
             {forecast.predictions.length === 0 ? (
               <div className="p-6 bg-amber-950/20 border border-amber-500/30 rounded-2xl text-center space-y-2">
-                <span className="text-3xl">⚠️</span>
+                <svg className="mx-auto w-8 h-8 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>
                 <p className="text-xs font-bold text-amber-200">Historical Depth Insufficient</p>
                 <p className="text-[11px] text-slate-300">{forecast.modelInfo.dataSource}</p>
               </div>

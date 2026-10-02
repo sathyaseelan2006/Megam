@@ -41,7 +41,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
   const filteredNews = SCIENCE_NEWS_SOURCES.filter(resourceMatches);
 
   return (
-    <div className="fixed left-20 md:left-24 top-4 bottom-4 z-40 w-[calc(100vw-6rem)] max-w-2xl bg-slate-950/90 text-white rounded-2xl backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] animate-fadeIn flex flex-col overflow-hidden">
+    <div className="fixed left-3 right-3 top-20 bottom-16 z-40 md:left-24 md:right-auto md:top-4 md:bottom-4 w-auto md:w-[calc(100vw-6rem)] md:max-w-2xl bg-slate-950/95 text-white rounded-2xl backdrop-blur-xl border border-slate-700 shadow-2xl animate-fadeIn flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900/60 border-b border-cyan-500/30 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
         {/* Environmental Impacts */}
         <div className="mb-4">
           <h4 className="text-lg font-semibold mb-2 text-green-400 flex items-center">
-            <span className="mr-2">🌍</span> Environmental Impacts
+            <svg className="inline w-4 h-4 mr-2 align-[-3px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18m0-18a15 15 0 0 0 0 18"/></svg> Environmental Impacts
           </h4>
           <ul className="space-y-1 text-sm text-gray-300">
             {pollutant.environmentalImpacts.map((impact, i) => (

@@ -1,12 +1,8 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
 import { GlobeMethods } from 'react-globe.gl';
 import { TopCommandBar } from './components/TopCommandBar';
 import InfoPanel from './components/InfoPanel';
 import GlobeComponent from './components/GlobeComponent';
-import EducationPanel from './components/EducationPanel';
-import HistoryPanel from './components/HistoryPanel';
-import ForecastPanel from './components/ForecastPanel';
-import AnalyticsPanel from './components/AnalyticsPanel';
 import CookieConsent from './components/CookieConsent';
 import { ExtremeHazardBanner } from './components/ExtremeHazardBanner';
 import { ISSTelemetryCard } from './components/ISSTelemetryCard';
@@ -17,6 +13,11 @@ import { smartLocationSearch, reverseGeocode } from './services/geocodingService
 import { getComprehensiveAQIData } from './services/satelliteService';
 import { historyService } from './services/historyService';
 import { GLOBAL_DANGER_ZONE_SEEDS } from './constants';
+
+const EducationPanel = lazy(() => import('./components/EducationPanel'));
+const HistoryPanel = lazy(() => import('./components/HistoryPanel'));
+const ForecastPanel = lazy(() => import('./components/ForecastPanel'));
+const AnalyticsPanel = lazy(() => import('./components/AnalyticsPanel'));
 
 interface DangerZonePoint {
   lat: number;
@@ -45,10 +46,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSatelliteView, setIsSatelliteView] = useState(false);
-  const [showEducation, setShowEducation] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showForecast, setShowForecast] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [activePanel, setActivePanel] = useState<'education' | 'history' | 'forecast' | 'analytics' | null>(null);
+  const showEducation = activePanel === 'education';
+  const showHistory = activePanel === 'history';
+  const showForecast = activePanel === 'forecast';
+  const showAnalytics = activePanel === 'analytics';
   const [dangerZones, setDangerZones] = useState<DangerZonePoint[]>([]);
   const [closedDangerNoticeId, setClosedDangerNoticeId] = useState<string | null>(null);
 
@@ -158,7 +160,6 @@ function App() {
   const handleSearch = useCallback(async (query: string) => {
     setIsLoading(true);
     setError(null);
-    setLocationData(null);
     try {
       // Get coordinates from geocoding service (no AI needed!)
       const locationInfo = await smartLocationSearch(query);
@@ -211,7 +212,6 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    setLocationData(null);
     
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -253,7 +253,6 @@ function App() {
     
     setIsLoading(true);
     setError(null);
-    setLocationData(null);
     
     try {
       console.log(`🔍 Clicked at coordinates: ${lat.toFixed(3)}, ${lng.toFixed(3)}`);
@@ -358,12 +357,11 @@ function App() {
   }, []);
 
   const handleHistoryLocationSelect = useCallback(async (lat: number, lng: number) => {
-    setShowHistory(false);
+    setActivePanel(null);
     globeRef.current?.pointOfView({ lat, lng, altitude: 1.5 }, 1000);
     
     setIsLoading(true);
     setError(null);
-    setLocationData(null);
     try {
       // Get real-time satellite/ground station data
       const satelliteData = await getComprehensiveAQIData(lat, lng);
@@ -388,9 +386,7 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Escape key to close panels
       if (e.key === 'Escape') {
-        if (showEducation) setShowEducation(false);
-        else if (showHistory) setShowHistory(false);
-        else if (showAnalytics) setShowAnalytics(false);
+        if (activePanel) setActivePanel(null);
         else if (locationData || error) handlePanelClose();
       }
       // Ctrl/Cmd + K to focus search
@@ -402,18 +398,18 @@ function App() {
       // Ctrl/Cmd + E for education
       if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
-        setShowEducation(!showEducation);
+        setActivePanel((panel) => panel === 'education' ? null : 'education');
       }
       // Ctrl/Cmd + H for history
       if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
         e.preventDefault();
-        setShowHistory(!showHistory);
+        setActivePanel((panel) => panel === 'history' ? null : 'history');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [locationData, error, showEducation, showHistory, showAnalytics, handlePanelClose]);
+  }, [locationData, error, activePanel, handlePanelClose]);
 
   const handleHazardFocus = useCallback((lat: number, lng: number) => {
     globeRef.current?.pointOfView({ lat, lng, altitude: 1.5 }, 1200);
@@ -421,7 +417,7 @@ function App() {
   }, [handleGlobeClick]);
 
   return (
-    <div className="relative w-screen h-screen bg-black overflow-hidden">
+    <div className="relative w-screen h-[100dvh] min-h-[480px] bg-black overflow-hidden">
       <GlobeComponent 
         globeRef={globeRef}
         locationData={locationData}
@@ -485,15 +481,15 @@ function App() {
         )}
 
         <div className='pointer-events-auto'>
-          <InfoPanel 
+        {!(showAnalytics || showForecast) && <InfoPanel
               data={locationData}
               onClose={handlePanelClose}
               loading={isLoading}
-          />
+          />}
         </div>
 
         {topDangerZone && showDangerNotice && (
-          <div className="absolute top-24 right-4 z-30 pointer-events-auto w-[92%] max-w-sm md:max-w-md">
+          <div className="fixed top-20 right-3 md:right-4 z-30 pointer-events-auto w-[calc(100%-1.5rem)] max-w-sm md:max-w-md">
             <div className="relative rounded-xl border border-red-400/40 bg-slate-900/80 backdrop-blur-md shadow-2xl overflow-hidden">
               <div className="px-3 py-2 bg-gradient-to-r from-red-600/40 to-pink-600/30 border-b border-red-400/30 flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold tracking-widest text-red-200">DANGER ZONE ALERT</p>
@@ -522,7 +518,7 @@ function App() {
         )}
 
         {/* Futuristic Cyber-HUD Command Dock */}
-        <div className="fixed z-50 pointer-events-auto left-1/2 -translate-x-1/2 bottom-6 flex flex-row items-center gap-2 p-2 bg-slate-950/85 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_0_35px_rgba(6,182,212,0.3)] md:left-4 md:translate-x-0 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:flex-col md:gap-3 md:p-2.5">
+        <div className="fixed z-50 pointer-events-auto left-1/2 -translate-x-1/2 bottom-14 flex flex-row items-center gap-2 p-2 bg-slate-950/90 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-xl md:left-4 md:translate-x-0 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:flex-col md:gap-3 md:p-2.5">
           {/* Cyber Status Indicator LED */}
           <div className="hidden md:flex flex-col items-center pb-1 border-b border-cyan-500/20 w-full mb-0.5">
             <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
@@ -532,7 +528,7 @@ function App() {
           {/* Analytics Button */}
           <div className="relative group">
             <button
-              onClick={() => locationData && setShowAnalytics(!showAnalytics)}
+              onClick={() => locationData && setActivePanel((panel) => panel === 'analytics' ? null : 'analytics')}
               disabled={!locationData}
               className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
                 showAnalytics 
@@ -555,7 +551,7 @@ function App() {
           {/* Forecast Button */}
           <div className="relative group">
             <button
-              onClick={() => locationData && setShowForecast(!showForecast)}
+              onClick={() => locationData && setActivePanel((panel) => panel === 'forecast' ? null : 'forecast')}
               disabled={!locationData}
               className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
                 showForecast 
@@ -578,7 +574,7 @@ function App() {
           {/* Education Button */}
           <div className="relative group">
             <button
-              onClick={() => setShowEducation(!showEducation)}
+              onClick={() => setActivePanel((panel) => panel === 'education' ? null : 'education')}
               className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
                 showEducation 
                   ? 'bg-gradient-to-br from-cyan-500 to-teal-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.6)] border border-cyan-300 ring-2 ring-cyan-400/40' 
@@ -598,7 +594,7 @@ function App() {
           {/* History Button */}
           <div className="relative group">
             <button
-              onClick={() => setShowHistory(!showHistory)}
+              onClick={() => setActivePanel((panel) => panel === 'history' ? null : 'history')}
               className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
                 showHistory 
                   ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.6)] border border-emerald-300 ring-2 ring-emerald-400/40' 
@@ -618,41 +614,41 @@ function App() {
 
         {/* Education Panel */}
         {showEducation && (
-          <div className='pointer-events-auto'>
+          <Suspense fallback={<div className="fixed inset-x-3 top-20 z-40 mx-auto max-w-sm rounded-lg border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-slate-300 shadow-xl">Loading panel…</div>}><div className='pointer-events-auto'>
             <EducationPanel 
-              onClose={() => setShowEducation(false)}
+              onClose={() => setActivePanel(null)}
             />
-          </div>
+          </div></Suspense>
         )}
 
         {/* History Panel */}
         {showHistory && (
-          <div className='pointer-events-auto'>
+          <Suspense fallback={<div className="fixed inset-x-3 top-20 z-40 mx-auto max-w-sm rounded-lg border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-slate-300 shadow-xl">Loading panel…</div>}><div className='pointer-events-auto'>
             <HistoryPanel 
-              onClose={() => setShowHistory(false)}
+              onClose={() => setActivePanel(null)}
               onLocationSelect={handleHistoryLocationSelect}
             />
-          </div>
+          </div></Suspense>
         )}
 
         {/* Analytics Panel */}
         {showAnalytics && locationData && (
-          <div className='pointer-events-auto'>
+          <Suspense fallback={<div className="fixed inset-x-3 top-20 z-40 mx-auto max-w-sm rounded-lg border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-slate-300 shadow-xl">Loading panel…</div>}><div className='pointer-events-auto'>
             <AnalyticsPanel 
               data={locationData}
-              onClose={() => setShowAnalytics(false)}
+              onClose={() => setActivePanel(null)}
             />
-          </div>
+          </div></Suspense>
         )}
 
         {/* Forecast Panel */}
         {showForecast && locationData && (
-          <div className='pointer-events-auto'>
+          <Suspense fallback={<div className="fixed inset-x-3 top-20 z-40 mx-auto max-w-sm rounded-lg border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-slate-300 shadow-xl">Loading panel…</div>}><div className='pointer-events-auto'>
             <ForecastPanel 
               data={locationData}
-              onClose={() => setShowForecast(false)}
+              onClose={() => setActivePanel(null)}
             />
-          </div>
+          </div></Suspense>
         )}
 
       {/* Cookie Consent Banner */}

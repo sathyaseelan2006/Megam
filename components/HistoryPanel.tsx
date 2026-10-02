@@ -52,7 +52,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ onClose, onLocationSelect }
     : history;
 
   return (
-    <div className="fixed top-20 right-4 z-40 w-[calc(100vw-2rem)] sm:w-full max-w-md max-h-[calc(100vh-6rem)] bg-slate-950/90 text-white rounded-2xl backdrop-blur-2xl border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.25)] animate-fadeInRight flex flex-col overflow-hidden">
+    <div className="fixed left-3 right-3 top-20 bottom-16 z-40 sm:left-auto sm:right-4 sm:bottom-auto sm:w-[calc(100vw-2rem)] sm:max-w-md sm:max-h-[calc(100dvh-6rem)] bg-slate-950/95 text-white rounded-2xl backdrop-blur-xl border border-slate-700 shadow-2xl animate-fadeInRight flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900/60 border-b border-cyan-500/30 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-3">

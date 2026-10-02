@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { GlobeIcon } from './icons';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -32,7 +33,7 @@ const Footer: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           {/* Brand */}
           <div className="flex items-center gap-2">
-            <span className="text-lg">🌍</span>
+            <GlobeIcon className="w-4 h-4 text-slate-400" />
             <span className="font-semibold text-white text-sm">Megam</span>
             <span className="text-[10px] text-gray-500">© {currentYear}</span>
           </div>

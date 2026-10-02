@@ -160,7 +160,7 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
   const strokeDashoffset = 251.2 - (251.2 * aqiGaugePct) / 100;
 
   return (
-    <aside className="fixed right-3 md:right-4 top-20 bottom-4 z-40 w-[calc(100vw-1.5rem)] sm:w-[420px] bg-slate-950/90 text-slate-100 rounded-2xl backdrop-blur-2xl border border-cyan-500/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-fadeInRight pointer-events-auto">
+    <aside className="fixed left-3 right-3 md:left-20 md:right-auto top-20 bottom-4 z-40 w-auto md:w-[420px] bg-slate-950/95 text-slate-100 rounded-2xl backdrop-blur-xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden animate-fadeInRight pointer-events-auto">
       
       {/* Header Bar */}
       <div className="p-4 bg-gradient-to-r from-cyan-950/60 via-slate-900/80 to-slate-950/80 border-b border-cyan-500/20 flex justify-between items-center flex-shrink-0">
@@ -210,15 +210,16 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
       )}
 
       {/* Loading State */}
-      {loading && (
+      {loading && data && <div className="flex items-center gap-2 px-4 py-2 border-b border-slate-800 text-xs text-slate-400" role="status"><span className="w-3.5 h-3.5 rounded-full border border-cyan-500/40 border-t-cyan-300 animate-spin" />Refreshing air quality data…</div>}
+      {loading && !data && (
         <div className="p-8 flex flex-col items-center justify-center h-full gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
-          <p className="text-xs font-mono text-cyan-300 tracking-wider">ACQUIRING SATELLITE & GROUND TELEMETRY...</p>
+          <div className="w-10 h-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
+          <p className="text-xs text-slate-300">Loading air quality data…</p>
         </div>
       )}
 
       {/* Main Content Area */}
-      {!loading && data && (
+      {data && (
         <div className="p-4 overflow-y-auto flex-1 space-y-4 font-sans scrollbar-thin scrollbar-thumb-cyan-500/20">
           
           {/* Hero Cyber Gauge Card */}
@@ -281,7 +282,7 @@ const InfoPanel: React.FC<InfoPanelProps> = ({ data, onClose, loading }) => {
           {/* Data Origin & Confidence Badge */}
           <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
             <div className="flex items-center gap-2">
-              <span className="text-cyan-400">📡</span>
+              <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M3 10a13 13 0 0 1 18 0M6 13a8 8 0 0 1 12 0m-9 3a4 4 0 0 1 6 0"/><circle cx="12" cy="19" r="1"/></svg>
               <span className="text-slate-300">
                 {data.dataSource === 'satellite' ? 'NASA / Satellite Feed' :
                  data.dataSource === 'ground' ? 'WAQI / OpenAQ Ground' : 'Hybrid Sensor Fusion'}

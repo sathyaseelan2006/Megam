@@ -384,9 +384,8 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
   };
 
   const getTrendIcon = (trend: 'improving' | 'stable' | 'worsening' | 'up' | 'down') => {
-    if (trend === 'improving' || trend === 'down') return '📉';
-    if (trend === 'worsening' || trend === 'up') return '📈';
-    return '➡️';
+    const direction = trend === 'stable' ? 'M4 12h15m-6-6 6 6-6 6' : trend === 'improving' || trend === 'down' ? 'm5 7 6 6 4-4 5 5m-6 0h6v-6' : 'm5 17 6-6 4 4 5-5m-6 0h6v6';
+    return <svg className="inline w-4 h-4 align-[-3px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={direction} /></svg>;
   };
 
   const getTrendColor = (trend: 'improving' | 'stable' | 'worsening' | 'up' | 'down') => {
@@ -405,12 +404,12 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full md:w-[600px] bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-l border-cyan-500/30 shadow-2xl z-30 overflow-hidden flex flex-col">
+    <div className="fixed left-3 right-3 top-20 bottom-16 md:left-auto md:right-0 md:top-0 md:bottom-0 md:w-[600px] bg-slate-950/95 backdrop-blur-xl border border-slate-700 md:border-l shadow-2xl z-40 overflow-hidden flex flex-col rounded-2xl md:rounded-none">
       {/* Header */}
       <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border-b border-cyan-500/30 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">📊</span>
+            <svg className="w-7 h-7 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M4 19V5m0 14h17M8 16v-5m5 5V7m5 9v-8"/></svg>
             <div>
               <h2 className="text-2xl font-bold text-white">Air Quality Analytics</h2>
               <p className="text-sm text-gray-300">
@@ -454,7 +453,7 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
           </div>
         ) : error ? (
           <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-200">
-            <p className="font-semibold mb-2">⚠️ Error</p>
+            <p className="font-semibold mb-2 flex items-center gap-2"><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>Error</p>
             <p className="text-sm">{error}</p>
           </div>
         ) : (
@@ -955,7 +954,7 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
                     {/* Weekly summary */}
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
                       <p className="text-sm text-blue-200">
-                        <span className="font-semibold">💡 Tip:</span> Best air quality days are shown in green. 
+                        <span className="font-semibold">Tip:</span> Best air quality days are shown in green.
                         Plan outdoor activities accordingly!
                       </p>
                     </div>

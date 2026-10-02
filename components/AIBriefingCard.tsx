@@ -20,7 +20,7 @@ export const AIBriefingCard: React.FC<AIBriefingCardProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-              <span className="text-lg">✨</span>
+              <svg className="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"/></svg>
             </div>
             <div>
               <div className="h-4 w-36 bg-slate-700 rounded mb-1.5" />
@@ -58,7 +58,7 @@ export const AIBriefingCard: React.FC<AIBriefingCardProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <span className="text-lg">✨</span>
+            <svg className="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 15 .9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z"/></svg>
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2">

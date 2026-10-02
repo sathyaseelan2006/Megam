@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 
+const ProviderIcon: React.FC<{ name: string }> = ({ name }) => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    {name === 'map' ? <><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></> : name === 'satellite' ? <><path d="m7 7 10 10M8 4l4-2 2 2-2 4-4-4Zm8 8 4-2 2 2-2 4-4-4Z"/><path d="m4 8-2 4 2 2 4-2-4-4Z"/></> : name === 'radio' ? <><path d="M3 10a13 13 0 0 1 18 0M6 13a8 8 0 0 1 12 0m-9 3a4 4 0 0 1 6 0"/><circle cx="12" cy="19" r="1"/></> : <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18m0-18a15 15 0 0 0 0 18"/></>}
+  </svg>
+);
+
 const DataProvidersFooter: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -9,7 +15,7 @@ const DataProvidersFooter: React.FC = () => {
       fullName: 'World Air Quality Index',
       description: 'Real-time air quality data from 130+ countries and 30,000+ monitoring stations',
       url: 'https://aqicn.org/',
-      icon: '🌐',
+      icon: 'globe',
       coverage: 'Global',
     },
     {
@@ -17,7 +23,7 @@ const DataProvidersFooter: React.FC = () => {
       fullName: 'Open Air Quality',
       description: 'Open-source air quality data from 10,000+ government monitoring stations',
       url: 'https://openaq.org/',
-      icon: '📡',
+      icon: 'radio',
       coverage: '100+ countries',
     },
     {
@@ -25,7 +31,7 @@ const DataProvidersFooter: React.FC = () => {
       fullName: 'OpenStreetMap Nominatim',
       description: 'Free geocoding service for location searches powered by OpenStreetMap',
       url: 'https://nominatim.openstreetmap.org/',
-      icon: '🗺️',
+      icon: 'map',
       coverage: 'Global',
     },
     {
@@ -33,7 +39,7 @@ const DataProvidersFooter: React.FC = () => {
       fullName: 'Copernicus Sentinel-5P',
       description: 'European satellite mission monitoring atmospheric pollutants (NO₂, SO₂, O₃, CO)',
       url: 'https://sentinel.esa.int/web/sentinel/missions/sentinel-5p',
-      icon: '🛰️',
+      icon: 'satellite',
       coverage: 'Global (Coming Soon)',
     },
     {
@@ -41,7 +47,7 @@ const DataProvidersFooter: React.FC = () => {
       fullName: 'NASA MODIS',
       description: 'Aerosol Optical Depth measurements from Terra and Aqua satellites',
       url: 'https://modis.gsfc.nasa.gov/',
-      icon: '🛰️',
+      icon: 'satellite',
       coverage: 'Global (Coming Soon)',
     },
   ];
@@ -64,7 +70,7 @@ const DataProvidersFooter: React.FC = () => {
                     className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors flex items-center space-x-1"
                     title={provider.fullName}
                   >
-                    <span>{provider.icon}</span>
+                    <ProviderIcon name={provider.icon} />
                     <span className="hidden sm:inline">{provider.name}</span>
                   </a>
                 ))}
@@ -119,7 +125,7 @@ const DataProvidersFooter: React.FC = () => {
                 >
                   <div className="flex items-start space-x-3">
                     <span className="text-2xl" role="img" aria-label={provider.name}>
-                      {provider.icon}
+                      <ProviderIcon name={provider.icon} />
                     </span>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-semibold text-white group-hover:text-cyan-400 transition-colors">

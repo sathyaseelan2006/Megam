@@ -25,24 +25,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="preload" as="image" href="/models/nebula/textures/Material_emissive.webp" fetchpriority="high" />
     
     <title>MEGAMO - Advanced Air Quality Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
       body {
-        font-family: 'Poppins', sans-serif;
-        background: linear-gradient(245deg, #111827, #030712, #1f2937);
-        background-size: 200% 200%;
-        animation: gradient-animation 15s ease infinite;
-      }
-
-      @keyframes gradient-animation {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #070b11;
       }
 
       @keyframes fadeIn {
