@@ -100,30 +100,52 @@ class ISSTrackerService {
   }
 
   private async fetchLiveTelemetry(): Promise<void> {
+    // 1. Try WhereTheISS (HTTPS)
     try {
-      // Free public real-time ISS tracking API with zero key requirement
-      const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
-      if (!response.ok) {
-        throw new Error(`ISS API responded with status ${response.status}`);
+      const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+      if (res.ok) {
+        const data = await res.json();
+        this.currentTelemetry = {
+          lat: Number(data.latitude),
+          lng: Number(data.longitude),
+          altitude: Math.round(Number(data.altitude)) || 418,
+          velocity: Math.round(Number(data.velocity)) || 27580,
+          visibility: data.visibility === 'daylight' ? 'daylight' : 'eclipsed',
+          solarHeading: Number(data.solar_lat) || 51.6,
+          timestamp: Number(data.timestamp) * 1000,
+          orbitPeriodMinutes: 92.68
+        };
+        this.isLiveFeedActive = true;
+        this.notifyListeners();
+        return;
       }
-      const data = await response.json();
-
-      this.currentTelemetry = {
-        lat: Number(data.latitude),
-        lng: Number(data.longitude),
-        altitude: Math.round(Number(data.altitude)),
-        velocity: Math.round(Number(data.velocity)),
-        visibility: data.visibility === 'daylight' ? 'daylight' : 'eclipsed',
-        solarHeading: Number(data.solar_lat) || 51.6,
-        timestamp: Number(data.timestamp) * 1000,
-        orbitPeriodMinutes: 92.68
-      };
-      this.isLiveFeedActive = true;
-      this.notifyListeners();
-    } catch (err) {
-      // Fallback: Propagate smoothly using orbital physics model if offline
-      this.simulateOrbitalStep();
+    } catch {
+      // Continue to Open-Notify fallback
     }
+
+    // 2. Try Open-Notify API (http://api.open-notify.org/iss-now.json)
+    try {
+      const res = await fetch('https://api.open-notify.org/iss-now.json');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.iss_position) {
+          this.currentTelemetry = {
+            ...this.currentTelemetry,
+            lat: parseFloat(data.iss_position.latitude),
+            lng: parseFloat(data.iss_position.longitude),
+            timestamp: (data.timestamp || Date.now() / 1000) * 1000,
+          };
+          this.isLiveFeedActive = true;
+          this.notifyListeners();
+          return;
+        }
+      }
+    } catch {
+      // Continue to orbital propagator
+    }
+
+    // 3. Fallback to orbital simulation step
+    this.simulateOrbitalStep();
   }
 
   private simulateOrbitalStep(): void {

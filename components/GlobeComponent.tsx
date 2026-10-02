@@ -197,7 +197,7 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
         }
         return `<div class="bg-slate-900/90 text-white text-xs px-2.5 py-1 rounded-lg border border-slate-700 shadow-lg font-mono">💨 ${p.name} <span class="font-bold text-amber-300">(AQI ${p.aqi})</span></div>`;
       }}
-      // ISS 3D Custom Objects Layer
+      // ISS 3D Custom Objects Layer & Custom Three.js Scene Layer
       objectsData={issObjects}
       objectLat="lat"
       objectLng="lng"
@@ -212,6 +212,14 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
         return `<div class="bg-slate-950/90 text-cyan-200 text-xs px-3 py-1.5 rounded-xl border border-cyan-400 shadow-2xl font-mono flex items-center gap-2">
           <span>🛰️</span>
           <span><strong>International Space Station</strong> (Click to Track)</span>
+        </div>`;
+      }}
+      customLayerData={issObjects}
+      customThreeObject={() => issModelEngine.getStationObject()}
+      customLayerLabel={() => {
+        return `<div class="bg-slate-950/90 text-cyan-200 text-xs px-3 py-1.5 rounded-xl border border-cyan-400 shadow-2xl font-mono flex items-center gap-2">
+          <span>🛰️</span>
+          <span><strong>International Space Station (ISS)</strong></span>
         </div>`;
       }}
       atmosphereColor="rgba(80, 200, 255, 0.4)"

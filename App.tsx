@@ -53,7 +53,7 @@ function App() {
   const [closedDangerNoticeId, setClosedDangerNoticeId] = useState<string | null>(null);
 
   // ISS Real-time 3D Telemetry and Tracking State
-  const [issTelemetry, setIssTelemetry] = useState<ISSTelemetry | null>(null);
+  const [issTelemetry, setIssTelemetry] = useState<ISSTelemetry | null>(() => issTrackerService.getTelemetry());
   const [showISSCard, setShowISSCard] = useState(false);
   const [isISSTrackingCamera, setIsISSTrackingCamera] = useState(false);
 

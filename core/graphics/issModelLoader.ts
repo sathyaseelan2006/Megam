@@ -3,8 +3,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 /**
  * ISS 3D Model Loader and Procedural Station Engine.
- * Supports custom .glb/.gltf models loaded from /models/iss.glb, /iss.glb,
- * and provides a high-fidelity procedural 3D model fallback.
+ * Supports custom GLTF/GLB models loaded from /models/iss/scene.gltf, /models/iss.glb, etc.
+ * Provides a high-visibility procedural 3D model fallback sized appropriately for the 3D Globe.
  */
 
 class ISSModelEngine {
@@ -38,19 +38,43 @@ class ISSModelEngine {
         path,
         (gltf) => {
           const model = gltf.scene;
-          // Normalize scale to fit nicely in globe space (~0.05 to 0.08 units)
+          
+          // Re-center geometry
           const box = new THREE.Box3().setFromObject(model);
+          const center = box.getCenter(new THREE.Vector3());
+          model.position.sub(center);
+
+          // Sized appropriately for Globe (R=100) -> Target bounding dimension ~ 5.5 units
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
-          const targetScale = 0.06 / (maxDim || 1);
+          const targetScale = 5.5 / (maxDim || 1);
           model.scale.set(targetScale, targetScale, targetScale);
 
-          // Add a subtle glowing beacon light to custom model
-          const beacon = new THREE.PointLight(0x22d3ee, 1.5, 2);
-          beacon.position.set(0, 0.02, 0);
-          model.add(beacon);
+          // Wrap inside a container with orbital beacons & beacon lights
+          const container = new THREE.Group();
+          container.add(model);
 
-          this.customModel = model;
+          // Emissive beacon lights to illuminate the station in dark space
+          const beaconLight = new THREE.PointLight(0x38bdf8, 3, 25);
+          beaconLight.position.set(0, 1.5, 0);
+          container.add(beaconLight);
+
+          const ambientFill = new THREE.AmbientLight(0xffffff, 1.2);
+          container.add(ambientFill);
+
+          // Glowing Target Reticle Ring around station
+          const reticleGeo = new THREE.RingGeometry(3.0, 3.4, 32);
+          const reticleMat = new THREE.MeshBasicMaterial({
+            color: 0x38bdf8,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.7,
+          });
+          const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+          reticle.rotation.x = Math.PI / 2;
+          container.add(reticle);
+
+          this.customModel = container;
           this.isLoaded = true;
           console.log(`✅ Loaded custom 3D ISS model from ${path}`);
         },
@@ -66,16 +90,19 @@ class ISSModelEngine {
 
   /**
    * Builds a high-fidelity procedural 3D ISS station if no custom GLB is available
+   * Sized for Globe R=100 (Span ~ 6.0 units)
    */
   public createProceduralISS(): THREE.Group {
     const station = new THREE.Group();
 
     // 1. Central Truss Framework (Horizontal Spine)
-    const trussGeo = new THREE.BoxGeometry(0.16, 0.008, 0.008);
+    const trussGeo = new THREE.BoxGeometry(6.0, 0.35, 0.35);
     const trussMat = new THREE.MeshStandardMaterial({
-      color: 0xd4d4d8,
-      metalness: 0.85,
-      roughness: 0.25,
+      color: 0xe4e4e7,
+      metalness: 0.9,
+      roughness: 0.2,
+      emissive: 0x71717a,
+      emissiveIntensity: 0.2,
     });
     const truss = new THREE.Mesh(trussGeo, trussMat);
     station.add(truss);
@@ -83,95 +110,104 @@ class ISSModelEngine {
     // 2. Pressurized Modules (Destiny Lab, Unity, Zarya, Kibo)
     const moduleMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      metalness: 0.6,
-      roughness: 0.3,
+      metalness: 0.7,
+      roughness: 0.25,
+      emissive: 0x38bdf8,
+      emissiveIntensity: 0.15,
     });
-    const mainHabGeo = new THREE.CylinderGeometry(0.009, 0.009, 0.06, 16);
+    const mainHabGeo = new THREE.CylinderGeometry(0.35, 0.35, 2.4, 16);
     const mainHab = new THREE.Mesh(mainHabGeo, moduleMat);
     mainHab.rotation.x = Math.PI / 2;
-    mainHab.position.set(0, -0.004, 0);
+    mainHab.position.set(0, -0.15, 0);
     station.add(mainHab);
 
     // Cross-module
-    const crossHabGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.04, 16);
+    const crossHabGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.6, 16);
     const crossHab = new THREE.Mesh(crossHabGeo, moduleMat);
     crossHab.rotation.z = Math.PI / 2;
-    crossHab.position.set(0, -0.004, 0.012);
+    crossHab.position.set(0, -0.15, 0.5);
     station.add(crossHab);
 
     // 3. Solar Array Wings (Photovoltaic Panels)
     const solarMat = new THREE.MeshStandardMaterial({
-      color: 0x1e3a8a, // Deep solar blue
+      color: 0x0284c7, // Solar blue
       emissive: 0x0369a1,
-      emissiveIntensity: 0.35,
-      metalness: 0.9,
+      emissiveIntensity: 0.6,
+      metalness: 0.95,
       roughness: 0.1,
     });
 
-    const panelGeo = new THREE.BoxGeometry(0.035, 0.001, 0.07);
+    const panelGeo = new THREE.BoxGeometry(1.4, 0.05, 2.8);
 
     // Left Solar Wing Pair
     const leftWing1 = new THREE.Mesh(panelGeo, solarMat);
-    leftWing1.position.set(-0.065, 0, 0);
+    leftWing1.position.set(-2.4, 0, 0);
     station.add(leftWing1);
 
     const leftWing2 = new THREE.Mesh(panelGeo, solarMat);
-    leftWing2.position.set(-0.065, 0, 0.045);
+    leftWing2.position.set(-2.4, 0, 1.8);
     station.add(leftWing2);
 
     // Right Solar Wing Pair
     const rightWing1 = new THREE.Mesh(panelGeo, solarMat);
-    rightWing1.position.set(0.065, 0, 0);
+    rightWing1.position.set(2.4, 0, 0);
     station.add(rightWing1);
 
     const rightWing2 = new THREE.Mesh(panelGeo, solarMat);
-    rightWing2.position.set(0.065, 0, 0.045);
+    rightWing2.position.set(2.4, 0, 1.8);
     station.add(rightWing2);
 
     // 4. Radiator Thermal Panels
     const radiatorMat = new THREE.MeshStandardMaterial({
       color: 0xf4f4f5,
-      metalness: 0.2,
-      roughness: 0.8,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.3,
+      metalness: 0.3,
+      roughness: 0.7,
     });
-    const radGeo = new THREE.BoxGeometry(0.015, 0.001, 0.03);
+    const radGeo = new THREE.BoxGeometry(0.6, 0.05, 1.2);
     const rad1 = new THREE.Mesh(radGeo, radiatorMat);
-    rad1.position.set(-0.02, 0.006, -0.015);
+    rad1.position.set(-0.8, 0.25, -0.6);
     station.add(rad1);
 
     const rad2 = new THREE.Mesh(radGeo, radiatorMat);
-    rad2.position.set(0.02, 0.006, -0.015);
+    rad2.position.set(0.8, 0.25, -0.6);
     station.add(rad2);
 
     // 5. Navigation & Telemetry Beacons
-    const beaconGeo = new THREE.SphereGeometry(0.003, 8, 8);
+    const beaconGeo = new THREE.SphereGeometry(0.12, 12, 12);
     const redBeaconMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
     const greenBeaconMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
     const cyanBeaconMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
 
     const portBeacon = new THREE.Mesh(beaconGeo, redBeaconMat);
-    portBeacon.position.set(-0.08, 0.002, 0);
+    portBeacon.position.set(-3.1, 0.1, 0);
     station.add(portBeacon);
 
     const stbdBeacon = new THREE.Mesh(beaconGeo, greenBeaconMat);
-    stbdBeacon.position.set(0.08, 0.002, 0);
+    stbdBeacon.position.set(3.1, 0.1, 0);
     station.add(stbdBeacon);
 
     const zenithBeacon = new THREE.Mesh(beaconGeo, cyanBeaconMat);
-    zenithBeacon.position.set(0, 0.015, 0);
+    zenithBeacon.position.set(0, 0.6, 0);
     station.add(zenithBeacon);
 
-    // Glowing Halo around station
-    const haloGeo = new THREE.RingGeometry(0.07, 0.08, 32);
-    const haloMat = new THREE.MeshBasicMaterial({
+    // Glowing Target Reticle Ring around station
+    const reticleGeo = new THREE.RingGeometry(3.0, 3.4, 32);
+    const reticleMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.75,
     });
-    const halo = new THREE.Mesh(haloGeo, haloMat);
-    halo.rotation.x = Math.PI / 2;
-    station.add(halo);
+    const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+    reticle.rotation.x = Math.PI / 2;
+    station.add(reticle);
+
+    // Self-illumination PointLight
+    const light = new THREE.PointLight(0x38bdf8, 3, 20);
+    light.position.set(0, 1.0, 0);
+    station.add(light);
 
     return station;
   }
