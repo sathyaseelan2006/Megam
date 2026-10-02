@@ -8,7 +8,7 @@ export interface WindVector {
 export interface AtmosphericPlumePath {
   id: string;
   name: string;
-  category: 'WILDFIRE_SMOKE' | 'INDUSTRIAL_HAZE' | 'DUST_STORM' | 'TRADE_WIND_DISPERSION';
+  category: 'WILDFIRE_SMOKE' | 'INDUSTRIAL_HAZE' | 'DUST_STORM' | 'TRADE_WIND_DISPERSION' | 'ISS_ORBIT_PATH';
   aqi: number;
   startLat: number;
   startLng: number;

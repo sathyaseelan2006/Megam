@@ -9,6 +9,8 @@ import ForecastPanel from './components/ForecastPanel';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import CookieConsent from './components/CookieConsent';
 import { ExtremeHazardBanner } from './components/ExtremeHazardBanner';
+import { ISSTelemetryCard } from './components/ISSTelemetryCard';
+import { issTrackerService, ISSTelemetry } from './core/satellite/issTracker';
 import Footer from './components/Footer';
 import { LocationData } from './types';
 import { smartLocationSearch, reverseGeocode } from './services/geocodingService';
@@ -49,6 +51,34 @@ function App() {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [dangerZones, setDangerZones] = useState<DangerZonePoint[]>([]);
   const [closedDangerNoticeId, setClosedDangerNoticeId] = useState<string | null>(null);
+
+  // ISS Real-time 3D Telemetry and Tracking State
+  const [issTelemetry, setIssTelemetry] = useState<ISSTelemetry | null>(null);
+  const [showISSCard, setShowISSCard] = useState(false);
+  const [isISSTrackingCamera, setIsISSTrackingCamera] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = issTrackerService.subscribe((telemetry) => {
+      setIssTelemetry(telemetry);
+      if (isISSTrackingCamera && globeRef.current) {
+        globeRef.current.pointOfView(
+          { lat: telemetry.lat, lng: telemetry.lng, altitude: 1.8 },
+          1000
+        );
+      }
+    });
+    return unsubscribe;
+  }, [isISSTrackingCamera]);
+
+  const handleTrackISS = useCallback(() => {
+    setShowISSCard((prev) => !prev);
+    if (issTelemetry) {
+      globeRef.current?.pointOfView(
+        { lat: issTelemetry.lat, lng: issTelemetry.lng, altitude: 1.8 },
+        1200
+      );
+    }
+  }, [issTelemetry]);
 
   const getLikelyReason = useCallback((data: LocationData): string => {
     const topPollutant = [...(data.pollutants || [])].sort((a, b) => b.concentration - a.concentration)[0];
@@ -396,6 +426,8 @@ function App() {
         locationData={locationData}
         dangerZones={dangerZones}
         isSatelliteView={isSatelliteView}
+        issTelemetry={issTelemetry || undefined}
+        onSelectISS={handleTrackISS}
         onGlobeClick={handleGlobeClick}
         onBackgroundClick={handlePanelClose}
       />
@@ -410,6 +442,8 @@ function App() {
           isSatelliteView={isSatelliteView}
           onToggleSatelliteView={handleToggleSatelliteView}
           onCenterGlobe={handleCenterGlobe}
+          onTrackISS={handleTrackISS}
+          isISSTracking={showISSCard}
           dangerZonesCount={dangerZones.length}
           onDangerZoneClick={() => {
             if (topDangerZone) {
@@ -420,6 +454,19 @@ function App() {
           currentCity={locationData?.city}
           currentCountry={locationData?.country}
         />
+
+        {/* ISS Mission Control Telemetry Card */}
+        {showISSCard && issTelemetry && (
+          <ISSTelemetryCard
+            telemetry={issTelemetry}
+            isTrackingCamera={isISSTrackingCamera}
+            onToggleTrackingCamera={() => setIsISSTrackingCamera(!isISSTrackingCamera)}
+            onClose={() => {
+              setShowISSCard(false);
+              setIsISSTrackingCamera(false);
+            }}
+          />
+        )}
         
         {error && (
             <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 p-4 w-[90%] max-w-md bg-red-950/90 text-red-100 rounded-2xl backdrop-blur-2xl border border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.4)] pointer-events-auto flex items-center justify-between gap-3">

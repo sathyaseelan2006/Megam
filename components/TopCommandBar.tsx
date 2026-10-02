@@ -7,6 +7,8 @@ interface TopCommandBarProps {
   isSatelliteView: boolean;
   onToggleSatelliteView: () => void;
   onCenterGlobe: () => void;
+  onTrackISS?: () => void;
+  isISSTracking?: boolean;
   dangerZonesCount: number;
   onDangerZoneClick?: () => void;
   loading: boolean;
@@ -20,6 +22,8 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   isSatelliteView,
   onToggleSatelliteView,
   onCenterGlobe,
+  onTrackISS,
+  isISSTracking,
   dangerZonesCount,
   onDangerZoneClick,
   loading,
@@ -133,6 +137,21 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
 
         {/* Quick Command Action Pills */}
         <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+          {/* ISS Orbital Tracking Pill */}
+          <button
+            onClick={onTrackISS}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-mono flex items-center gap-1.5 transition-all duration-300 border ${
+              isISSTracking
+                ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-[0_0_15px_rgba(251,191,36,0.4)]'
+                : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700 text-slate-300 hover:border-amber-400/50'
+            }`}
+            title="Track International Space Station (3D Model & Orbit)"
+          >
+            <span className="text-xs">🛰️</span>
+            <span className="hidden sm:inline font-bold">ISS</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+          </button>
+
           {/* Satellite Layer Toggle */}
           <button
             onClick={onToggleSatelliteView}
