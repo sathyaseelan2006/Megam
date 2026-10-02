@@ -62,8 +62,8 @@ function App() {
       setIssTelemetry(telemetry);
       if (isISSTrackingCamera && globeRef.current) {
         globeRef.current.pointOfView(
-          { lat: telemetry.lat, lng: telemetry.lng, altitude: 1.8 },
-          1000
+          { lat: telemetry.lat, lng: telemetry.lng, altitude: 0.8 },
+          800
         );
       }
     });
@@ -71,10 +71,11 @@ function App() {
   }, [isISSTrackingCamera]);
 
   const handleTrackISS = useCallback(() => {
-    setShowISSCard((prev) => !prev);
+    setShowISSCard(true);
+    setIsISSTrackingCamera(true);
     if (issTelemetry) {
       globeRef.current?.pointOfView(
-        { lat: issTelemetry.lat, lng: issTelemetry.lng, altitude: 1.8 },
+        { lat: issTelemetry.lat, lng: issTelemetry.lng, altitude: 0.8 },
         1200
       );
     }

@@ -72,8 +72,8 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
           startLng: orbitPoints[i].lng,
           endLat: orbitPoints[i + 1].lat,
           endLng: orbitPoints[i + 1].lng,
-          color: 'rgba(56, 189, 248, 0.7)',
-          altitude: 0.16,
+          color: 'rgba(56, 189, 248, 0.75)',
+          altitude: 0.22,
           dashAnimateTime: 2500,
           name: 'ISS Orbital Trajectory',
           category: 'ISS_ORBIT_PATH',
@@ -92,9 +92,10 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
       {
         lat: issTelemetry.lat,
         lng: issTelemetry.lng,
-        altitude: 0.16, // Relative LEO orbital altitude
+        altitude: 0.22, // LEO orbital altitude
         name: 'International Space Station (ISS)',
         speed: issTelemetry.velocity,
+        altKm: issTelemetry.altitude,
       }
     ];
   }, [issTelemetry]);
@@ -186,18 +187,18 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
       arcEndLng="endLng"
       arcColor="color"
       arcAltitude="altitude"
-      arcStroke={0.55}
-      arcDashLength={0.35}
-      arcDashGap={0.15}
+      arcStroke={0.65}
+      arcDashLength={0.4}
+      arcDashGap={0.12}
       arcDashAnimateTime="dashAnimateTime"
       arcLabel={(d: object) => {
         const p = d as AtmosphericPlumePath;
         if (p.name.includes('ISS')) {
-          return `<div class="bg-slate-900/90 text-amber-200 text-xs px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-xl font-mono">🛰️ ${p.name}</div>`;
+          return `<div class="bg-slate-900/90 text-amber-200 text-xs px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-xl font-mono">🛰️ ${p.name} (418 km Orbit)</div>`;
         }
         return `<div class="bg-slate-900/90 text-white text-xs px-2.5 py-1 rounded-lg border border-slate-700 shadow-lg font-mono">💨 ${p.name} <span class="font-bold text-amber-300">(AQI ${p.aqi})</span></div>`;
       }}
-      // ISS 3D Custom Objects Layer & Custom Three.js Scene Layer
+      // ISS 3D Custom Objects Layer
       objectsData={issObjects}
       objectLat="lat"
       objectLng="lng"
@@ -214,13 +215,26 @@ const GlobeComponent: React.FC<GlobeComponentProps> = ({
           <span><strong>International Space Station</strong> (Click to Track)</span>
         </div>`;
       }}
-      customLayerData={issObjects}
-      customThreeObject={() => issModelEngine.getStationObject()}
-      customLayerLabel={() => {
-        return `<div class="bg-slate-950/90 text-cyan-200 text-xs px-3 py-1.5 rounded-xl border border-cyan-400 shadow-2xl font-mono flex items-center gap-2">
-          <span>🛰️</span>
-          <span><strong>International Space Station (ISS)</strong></span>
-        </div>`;
+      // 3D Orbital HTML HUD Billboard
+      htmlElementsData={issObjects}
+      htmlLat="lat"
+      htmlLng="lng"
+      htmlAltitude={0.25}
+      htmlElement={(d: any) => {
+        const el = document.createElement('div');
+        el.className = 'cursor-pointer select-none';
+        el.innerHTML = `
+          <div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/90 border border-cyan-400 text-cyan-200 text-xs font-mono shadow-[0_0_25px_rgba(6,182,212,0.9)] backdrop-blur-md hover:scale-110 transition-transform">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            <span class="font-bold">🛰️ ISS</span>
+            <span class="text-amber-300 text-[10px] font-bold">${d.speed ? d.speed.toLocaleString() : '27,580'} km/h</span>
+          </div>
+        `;
+        el.onclick = (e) => {
+          e.stopPropagation();
+          if (onSelectISS) onSelectISS();
+        };
+        return el;
       }}
       atmosphereColor="rgba(80, 200, 255, 0.4)"
       atmosphereAltitude={0.3}
