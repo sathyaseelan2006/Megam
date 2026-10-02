@@ -21,10 +21,12 @@ class ISSModelEngine {
    */
   private attemptLoadCustomModel() {
     const candidatePaths = [
+      '/models/iss/scene.gltf',
       '/models/iss.glb',
       '/models/iss.gltf',
       '/iss.glb',
-      '/iss.gltf'
+      '/iss.gltf',
+      '/models/iss/iss.glb'
     ];
 
     const tryNext = (index: number) => {

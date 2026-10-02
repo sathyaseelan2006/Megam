@@ -1,0 +1,11 @@
+Model Information:
+* title:	ISS (Space Station)
+* source:	https://sketchfab.com/3d-models/iss-space-station-da1d9b752cab4980ab40926ccd7bda7e
+* author:	freefiredond (https://sketchfab.com/freefiredond)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "ISS (Space Station)" (https://sketchfab.com/3d-models/iss-space-station-da1d9b752cab4980ab40926ccd7bda7e) by freefiredond (https://sketchfab.com/freefiredond) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
