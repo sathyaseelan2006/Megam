@@ -12,8 +12,6 @@ interface TopCommandBarProps {
   dangerZonesCount: number;
   onDangerZoneClick?: () => void;
   loading: boolean;
-  currentCity?: string;
-  currentCountry?: string;
 }
 
 export const TopCommandBar: React.FC<TopCommandBarProps> = ({
@@ -27,8 +25,6 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   dangerZonesCount,
   onDangerZoneClick,
   loading,
-  currentCity,
-  currentCountry,
 }) => {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -57,37 +53,10 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
   return (
     <header className="fixed top-3 left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-6xl z-50 pointer-events-auto">
       <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-2 md:gap-4 px-3 py-2 md:px-4 md:py-2.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700 rounded-xl shadow-xl">
-        
-        {/* Brand & Live Satellite Status */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-slate-800 border border-slate-600">
-            <span className="text-lg font-black tracking-tighter text-cyan-300">M</span>
-            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping opacity-75" />
-            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-400" />
-          </div>
-          
-          <div className="hidden sm:flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold tracking-[0.16em] uppercase text-slate-100">
-                MEGAM
-              </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
-                LIVE
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse" />
-              <span className="text-[10px] font-mono text-slate-400">
-                {currentCity ? `${currentCity}, ${currentCountry}` : 'GLOBAL TELEMETRY ACTIVE'}
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* High-Tech Omnibar Search */}
         <form 
           onSubmit={handleFormSubmit}
-          className={`relative order-3 basis-full md:order-none md:basis-auto flex-1 max-w-none md:max-w-md transition-all duration-200 ${
+          className={`relative order-1 basis-full md:order-none md:basis-auto flex-1 max-w-none md:max-w-2xl transition-all duration-200 ${
             isFocused ? 'ring-2 ring-cyan-400/50' : ''
           } rounded-lg bg-slate-900 border border-slate-700 flex items-center px-3 py-1.5`}
         >
@@ -136,7 +105,7 @@ export const TopCommandBar: React.FC<TopCommandBarProps> = ({
         </form>
 
         {/* Quick Command Action Pills */}
-        <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+        <div className="order-2 flex items-center gap-1.5 md:order-none md:gap-2 flex-shrink-0">
           {/* ISS Orbital Tracking Pill */}
           <button
             onClick={onTrackISS}

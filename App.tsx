@@ -448,8 +448,6 @@ function App() {
             }
           }}
           loading={isLoading}
-          currentCity={locationData?.city}
-          currentCountry={locationData?.country}
         />
 
         {/* ISS Mission Control Telemetry Card */}
