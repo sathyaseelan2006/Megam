@@ -8,6 +8,14 @@ import {
 } from '../educationalContent';
 import { CloseIcon, BookOpenIcon } from './icons';
 
+const PollutantIcon: React.FC<{ symbol: string; className?: string }> = ({ symbol, className = 'h-5 w-5' }) => {
+  const shared = { className, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true as const };
+  if (symbol === 'O₃') return <svg {...shared}><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg>;
+  if (symbol === 'NO₂' || symbol === 'SO₂' || symbol === 'CO') return <svg {...shared}><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="m7 7 3 3m7-3-3 3m-7 7 3-3m7 3-3-3"/></svg>;
+  if (symbol === 'VOC') return <svg {...shared}><path d="M9 3h6m-5 0v6l-5.5 9.2A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-2.8L14 9V3"/><path d="M8 15h8"/></svg>;
+  return <svg {...shared}><circle cx="7" cy="8" r="2"/><circle cx="16" cy="6" r="1.5"/><circle cx="14" cy="15" r="2.5"/><circle cx="6" cy="18" r="1.5"/><path d="m9 8 5-1m-6 3 4 3m-5 3 5-.5"/></svg>;
+};
+
 interface EducationPanelProps {
   pollutantSymbol?: string;
   onClose: () => void;
@@ -41,7 +49,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
   const filteredNews = SCIENCE_NEWS_SOURCES.filter(resourceMatches);
 
   return (
-    <div className="fixed left-3 right-3 top-20 bottom-24 z-40 md:left-24 md:right-auto md:top-4 md:bottom-4 w-auto md:w-[calc(100vw-6rem)] md:max-w-2xl bg-slate-950/95 text-white rounded-2xl backdrop-blur-xl border border-slate-700/80 shadow-[0_20px_60px_rgba(2,6,23,0.55)] animate-fadeIn flex flex-col overflow-hidden">
+    <div className="fixed left-3 right-3 top-20 bottom-24 z-40 md:left-24 md:right-auto md:top-28 md:bottom-4 w-auto md:w-[calc(100vw-6rem)] md:max-w-2xl bg-slate-950/95 text-white rounded-2xl backdrop-blur-xl border border-slate-700/80 shadow-[0_20px_60px_rgba(2,6,23,0.55)] animate-fadeIn flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 sm:p-5 bg-slate-900/80 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -90,22 +98,23 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
 
       {/* Pollutant Selector */}
       {activeView === 'encyclopedia' && (
-        <div className="p-4 border-b border-gray-700 overflow-x-auto flex-shrink-0">
-          <div className="flex space-x-2">
+        <div className="flex-shrink-0 overflow-x-auto border-b border-slate-800 px-4 py-3">
+          <div className="flex min-w-max gap-2">
             {pollutantKeys.map(key => {
               const p = POLLUTANT_ENCYCLOPEDIA[key];
               return (
                 <button
                   key={key}
                   onClick={() => setSelectedPollutant(key)}
-                  className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap ${
+                  aria-pressed={selectedPollutant === key}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all whitespace-nowrap ${
                     selectedPollutant === key
-                      ? 'bg-cyan-500 text-white'
-                      : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'border-transparent bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
-                  style={{ borderColor: p.color }}
+                  style={{ borderColor: selectedPollutant === key ? p.color : undefined }}
                 >
-                  {p.icon} {p.symbol}
+                  <PollutantIcon symbol={p.symbol} className="h-4 w-4" /> {p.symbol}
                 </button>
               );
             })}
@@ -150,7 +159,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
         {/* Title */}
         <div className="mb-4">
           <div className="flex items-center mb-2">
-            <span className="text-4xl mr-3">{pollutant.icon}</span>
+            <div className="mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900" style={{ color: pollutant.color }}><PollutantIcon symbol={pollutant.symbol} className="h-6 w-6" /></div>
             <div>
               <h3 className="text-2xl font-bold" style={{ color: pollutant.color }}>
                 {pollutant.symbol} - {pollutant.name}
