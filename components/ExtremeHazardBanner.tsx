@@ -53,7 +53,7 @@ export const ExtremeHazardBanner: React.FC<ExtremeHazardBannerProps> = ({
         {/* Pulsing Alarm Icon */}
         <div className="flex items-center space-x-3 overflow-hidden">
           <div className="w-8 h-8 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center flex-shrink-0">
-            <span className="text-base animate-ping">🚨</span>
+            <svg aria-hidden="true" className="h-4 w-4 text-red-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 2.8 19a1.3 1.3 0 0 0 1.1 2h16.2a1.3 1.3 0 0 0 1.1-2L12 3Z"/><path d="M12 9v4m0 3h.01"/></svg>
           </div>
           <div className="truncate">
             <div className="flex items-center gap-2">
@@ -79,7 +79,7 @@ export const ExtremeHazardBanner: React.FC<ExtremeHazardBannerProps> = ({
             onClick={() => onFocusLocation(currentHazard.lat, currentHazard.lng, currentHazard.place)}
             className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-medium shadow-md shadow-red-600/30 transition transform hover:scale-105 flex items-center gap-1.5"
           >
-            <span>🎯</span>
+            <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4"/></svg>
             <span className="hidden sm:inline">Track Plume</span>
           </button>
           <button

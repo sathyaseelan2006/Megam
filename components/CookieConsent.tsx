@@ -47,7 +47,7 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onDecline }) =>
             {/* Content */}
             <div className="flex-1">
               <div className="flex items-start gap-3">
-                <span className="text-2xl flex-shrink-0">🍪</span>
+                <svg aria-hidden="true" className="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20.5 13A8.5 8.5 0 1 1 11 3.5c.2 2.7 2.3 4.8 5 5 .3 2.4 2.1 4.2 4.5 4.5Z"/><circle cx="8.5" cy="10" r=".8"/><circle cx="12" cy="16" r=".8"/><circle cx="7" cy="15" r=".8"/></svg>
                 <div>
                   <h3 className="text-sm font-semibold text-white mb-1">
                     We use cookies to improve your experience

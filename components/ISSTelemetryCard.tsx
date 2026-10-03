@@ -75,7 +75,7 @@ export const ISSTelemetryCard: React.FC<ISSTelemetryCardProps> = ({
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
                 : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
             }`}>
-              {telemetry.visibility === 'daylight' ? '☀️ Daylight Pass' : '🌑 Earth Shadow (Eclipse)'}
+              <span className="inline-flex items-center gap-1.5"><svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>{telemetry.visibility === 'daylight' ? 'Daylight pass' : 'Earth shadow'}</span>
             </span>
           </div>
           <div className="flex justify-between items-center text-slate-300">

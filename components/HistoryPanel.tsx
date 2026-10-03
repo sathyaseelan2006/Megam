@@ -104,11 +104,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ onClose, onLocationSelect }
       <div className="flex-1 overflow-y-auto p-4">
         {displayedHistory.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400 mb-2">
-              {activeTab === 'favorites' 
-                ? '⭐ No favorites yet' 
-                : '📍 No search history'}
-            </p>
+            <div className="mb-2 flex justify-center text-slate-500"><svg aria-hidden="true" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 14.8 9l6.2.7-4.6 4.2 1.3 6.1L12 17l-5.7 3 1.3-6.1L3 9.7 9.2 9 12 3Z"/></svg></div>
+            <p className="text-gray-400 mb-2">{activeTab === 'favorites' ? 'No favorites yet' : 'No search history'}</p>
             <p className="text-sm text-gray-500">
               {activeTab === 'favorites'
                 ? 'Star locations to save them as favorites'

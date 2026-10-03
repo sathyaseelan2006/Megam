@@ -760,7 +760,7 @@ const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ data, onClose }) => {
             {monthlyData.length > 0 && (
               <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-200">
                 <p className="flex items-center gap-2">
-                  <span>ℹ️</span>
+                  <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>
                   <span>
                     Showing analysis based on {monthlyData.reduce((sum, m) => sum + m.totalDays, 0)} days of historical data
                   </span>

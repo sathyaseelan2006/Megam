@@ -586,9 +586,9 @@ function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
               </svg>
             </button>
-            <span className="absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-900 border border-cyan-500/40 text-cyan-200 text-xs font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl hidden md:block z-50">
-              Science Hub (Ctrl+E)
-            </span>
+            {!showEducation && <span className="absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl hidden md:block z-[60]">
+              Science Hub <span className="ml-1 text-slate-400">Ctrl+E</span>
+            </span>}
           </div>
 
           {/* History Button */}

@@ -41,24 +41,23 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
   const filteredNews = SCIENCE_NEWS_SOURCES.filter(resourceMatches);
 
   return (
-    <div className="fixed left-3 right-3 top-20 bottom-16 z-40 md:left-24 md:right-auto md:top-4 md:bottom-4 w-auto md:w-[calc(100vw-6rem)] md:max-w-2xl bg-slate-950/95 text-white rounded-2xl backdrop-blur-xl border border-slate-700 shadow-2xl animate-fadeIn flex flex-col overflow-hidden">
+    <div className="fixed left-3 right-3 top-20 bottom-24 z-40 md:left-24 md:right-auto md:top-4 md:bottom-4 w-auto md:w-[calc(100vw-6rem)] md:max-w-2xl bg-slate-950/95 text-white rounded-2xl backdrop-blur-xl border border-slate-700/80 shadow-[0_20px_60px_rgba(2,6,23,0.55)] animate-fadeIn flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 bg-gradient-to-r from-cyan-950/60 to-slate-900/60 border-b border-cyan-500/30 flex justify-between items-center flex-shrink-0">
+      <div className="p-4 sm:p-5 bg-slate-900/80 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-300">
             <BookOpenIcon className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-wider uppercase text-cyan-100 flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight text-white flex items-center gap-2">
               {activeView === 'encyclopedia' ? 'Pollutant Encyclopedia' : 'Science Research Hub'}
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">HUD-EDU</span>
             </h2>
-            <p className="text-xs text-cyan-400/70 font-mono">Atmospheric & Chemical Composition Database</p>
+            <p className="mt-0.5 text-xs text-slate-400">Explore pollutants, health effects and current research</p>
           </div>
         </div>
         <button 
           onClick={onClose} 
-          className="p-2 rounded-xl bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-300 border border-slate-700/60 hover:border-red-500/40 transition-all duration-200"
+          className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition-colors duration-200"
           aria-label="Close education panel"
         >
           <CloseIcon className="w-5 h-5" />
@@ -66,23 +65,23 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
       </div>
 
       {/* Top-level view switch */}
-      <div className="px-4 pt-4 pb-2 border-b border-gray-700 flex gap-2 flex-shrink-0">
+      <div className="px-4 pt-4 pb-3 border-b border-slate-800 flex gap-2 flex-shrink-0">
         <button
           onClick={() => setActiveView('encyclopedia')}
-          className={`px-3 py-2 rounded text-sm font-semibold transition-colors ${
+          className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
             activeView === 'encyclopedia'
-              ? 'bg-cyan-500 text-white'
-              : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+              ? 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-600'
+              : 'bg-transparent hover:bg-slate-800 text-slate-400 hover:text-slate-200'
           }`}
         >
           Encyclopedia
         </button>
         <button
           onClick={() => setActiveView('science')}
-          className={`px-3 py-2 rounded text-sm font-semibold transition-colors ${
+          className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
             activeView === 'science'
-              ? 'bg-cyan-500 text-white'
-              : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300'
+              ? 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-600'
+              : 'bg-transparent hover:bg-slate-800 text-slate-400 hover:text-slate-200'
           }`}
         >
           Research + News
@@ -171,7 +170,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
         {/* Sources */}
         <div className="mb-4">
           <h4 className="text-lg font-semibold mb-2 text-cyan-400 flex items-center">
-            <span className="mr-2">🏭</span> Main Sources
+            <svg aria-hidden="true" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21V10l6 3V9l6 4V5h6v16H3Z"/><path d="M17 8h1m-1 4h1m-9 5h1m4 0h1"/></svg> Main Sources
           </h4>
           <ul className="space-y-1 text-sm text-gray-300">
             {pollutant.sources.map((source, i) => (
@@ -186,7 +185,7 @@ const EducationPanel: React.FC<EducationPanelProps> = ({ pollutantSymbol, onClos
         {/* Health Impacts */}
         <div className="mb-4">
           <h4 className="text-lg font-semibold mb-2 text-red-400 flex items-center">
-            <span className="mr-2">⚕️</span> Health Impacts
+            <svg aria-hidden="true" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="M9 12h6m-3-3v6"/></svg> Health Impacts
           </h4>
           
           <div className="mb-3">

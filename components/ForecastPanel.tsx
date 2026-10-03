@@ -104,7 +104,7 @@ const ForecastPanel: React.FC<ForecastPanelProps> = ({ data, onClose }) => {
       <div className="p-4 px-5 border-b border-cyan-500/20 bg-slate-900/60 backdrop-blur-md flex items-center justify-between z-10 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 border border-cyan-300/30">
-            <span className="text-xl">🔮</span>
+            <svg aria-hidden="true" className="h-5 w-5 text-cyan-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17 9 11l4 4 8-9"/><path d="M15 6h6v6"/><path d="M4 21h16"/></svg>
           </div>
           <div>
             <div className="flex items-center gap-2">
